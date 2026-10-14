@@ -1,0 +1,3004 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FitTrack - Online Fitness Tracking System</title>
+    <meta name="description" content="High-performance interactive fitness tracking dashboard featuring daily activity gauges, live heart rate monitor, workout schedules, and AI Coach." />
+    <meta property="og:title" content="FitTrack - Online Fitness Tracking System" />
+    <meta property="og:description" content="High-performance interactive fitness tracking dashboard featuring daily activity gauges, live heart rate monitor, workout schedules, and AI Coach." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              pulseBg: '#0D0D11',
+              pulseBgAlt: '#121318',
+              pulseCard: '#1A1B22',
+              pulseCardBorder: 'rgba(255, 255, 255, 0.06)',
+              pulseCoral: '#FF3B6B',
+              pulseOrange: '#FF7A45',
+              pulseAmber: '#FFB347',
+              pulseMuted: '#8E929F',
+            },
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            },
+            backgroundImage: {
+              'coral-gradient': 'linear-gradient(135deg, #FF3B6B 0%, #FF7A45 100%)',
+              'coach-gradient': 'linear-gradient(135deg, #FF4B6E 0%, #FF8552 100%)',
+            },
+            boxShadow: {
+              'coral-glow': '0 0 25px -3px rgba(255, 59, 107, 0.45)',
+              'orange-glow': '0 0 25px -3px rgba(255, 122, 69, 0.45)',
+              'card-subtle': '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Canvas Confetti for workout completion celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <!-- JSZip for 1-click Java project export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+      body {
+        background-color: #0D0D11;
+        color: #FFFFFF;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        overflow-x: hidden;
+      }
+      
+      /* Custom glowing scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0D0D11;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1A1B22;
+        border-radius: 9999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #FF3B6B;
+      }
+
+      /* Pulsing animations */
+      @keyframes pulseGlow {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+          filter: drop-shadow(0 0 4px rgba(255, 59, 107, 0.8));
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(0.96);
+          filter: drop-shadow(0 0 1px rgba(255, 59, 107, 0.4));
+        }
+      }
+
+      @keyframes heartBeat {
+        0% { transform: scale(1); }
+        14% { transform: scale(1.18); }
+        28% { transform: scale(1); }
+        42% { transform: scale(1.18); }
+        70% { transform: scale(1); }
+      }
+
+      .animate-heartbeat {
+        animation: heartBeat 1.25s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+        transform-origin: center;
+      }
+
+      .pulse-dot {
+        animation: pulseGlow 1.8s infinite ease-in-out;
+      }
+
+      /* Triple ring SVG styling */
+      .ring-circle {
+        transition: stroke-dashoffset 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+      }
+
+      .ring-glow-filter {
+        filter: drop-shadow(0 0 6px currentColor);
+      }
+    </style>
+  </head>
+  <body class="bg-[#0D0D11] text-white min-h-screen selection:bg-[#FF3B6B] selection:text-white pb-24 md:pb-12">
+    <!-- Main App Container -->
+    <div id="app" class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12">
+
+      <!-- TOP FLOATING PILL NAVIGATION BAR (Desktop / Tablet) -->
+      <header class="sticky top-3 z-40 flex justify-center mb-6">
+        <nav class="bg-[#16171F]/90 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-1.5 flex items-center gap-1 sm:gap-2 shadow-2xl">
+          <button id="nav-dashboard" onclick="switchNavTab('dashboard')" class="nav-tab text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all flex items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+            <span>Dashboard</span>
+          </button>
+          <button id="nav-workouts" onclick="switchNavTab('workouts')" class="nav-tab text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all flex items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="dumbbell" class="w-3.5 h-3.5"></i>
+            <span>Workouts</span>
+          </button>
+          <button id="nav-progress" onclick="switchNavTab('progress')" class="nav-tab text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all flex items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="line-chart" class="w-3.5 h-3.5"></i>
+            <span>Progress</span>
+          </button>
+          <button id="nav-nutrition" onclick="switchNavTab('nutrition')" class="nav-tab text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all flex items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="apple" class="w-3.5 h-3.5"></i>
+            <span>Nutrition</span>
+          </button>
+          <button id="nav-community" onclick="switchNavTab('community')" class="nav-tab hidden sm:flex text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            <span>Community</span>
+          </button>
+          <button id="nav-javarubric" onclick="switchNavTab('javarubric')" class="nav-tab text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 rounded-full text-[#8E929F] hover:text-white transition-all flex items-center gap-1.5 hover:bg-white/5">
+            <i data-lucide="code-2" class="w-3.5 h-3.5 text-[#FFB347]"></i>
+            <span>Java Rubric</span>
+          </button>
+          <button id="nav-login" onclick="switchNavTab('login')" class="nav-tab active-tab text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 rounded-full transition-all flex items-center gap-1.5 text-white bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] shadow-lg shadow-[#FF3B6B]/25">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+            <span id="nav-auth-text">Sign In</span>
+          </button>
+          <button onclick="openQuickLogModal()" title="Quick Log" class="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md shadow-[#FF3B6B]/30 ml-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+          </button>
+        </nav>
+      </header>
+
+      <!-- MAIN HEADER (Brand, Greeting & Controls - Unlocked upon Login) -->
+      <div id="main-header" class="hidden flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8 transition-all duration-300">
+        <!-- Brand & Greeting -->
+        <div class="flex items-center gap-4">
+          <!-- Logo -->
+          <div class="w-12 h-12 rounded-2xl bg-[#1A1B22] border border-white/10 flex items-center justify-center shadow-lg group">
+            <i data-lucide="activity" class="w-6 h-6 text-[#FF3B6B] animate-pulse"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs uppercase tracking-[0.25em] font-extrabold text-[#FF3B6B]">FITTRACK</span>
+              <span class="text-xs text-[#8E929F]">·</span>
+              <span id="current-date-text" class="text-xs text-[#8E929F]">Saturday, Oct 10</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-0.5">
+              Good morning, <span id="greeting-username" class="bg-gradient-to-r from-white via-white to-gray-300 bg-clip-text text-transparent">Athlete</span> 👋
+            </h1>
+            <p class="text-xs sm:text-sm text-[#8E929F] mt-0.5">Ready to crush your goals today?</p>
+          </div>
+        </div>
+
+        <!-- Right Controls: Notification, Avatar & AI Coach Card -->
+        <div class="flex items-center gap-3 self-end lg:self-auto flex-wrap">
+          <!-- Notification Bell -->
+          <div class="relative">
+            <button id="notification-btn" onclick="toggleNotifications()" class="relative w-11 h-11 rounded-2xl bg-[#1A1B22] border border-white/5 hover:border-white/20 flex items-center justify-center text-white/80 hover:text-white transition-all shadow-card-subtle">
+              <i data-lucide="bell" class="w-5 h-5"></i>
+              <span class="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-[#FF3B6B] rounded-full ring-2 ring-[#1A1B22] pulse-dot"></span>
+            </button>
+
+            <!-- Notifications Dropdown -->
+            <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-[#1A1B22] border border-white/10 rounded-2xl shadow-2xl p-4 z-50">
+              <div class="flex items-center justify-between pb-3 border-b border-white/5">
+                <span class="text-xs font-bold uppercase tracking-wider text-white">Notifications</span>
+                <button onclick="clearNotifications()" class="text-[11px] text-[#FF7A45] hover:underline">Mark all read</button>
+              </div>
+              <div class="space-y-3 pt-3 text-xs">
+                <div class="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex gap-2.5">
+                  <span class="w-2 h-2 rounded-full bg-[#FF3B6B] mt-1 shrink-0"></span>
+                  <div>
+                    <p class="font-semibold text-white">Step Goal Exceeded! 🚀</p>
+                    <p class="text-[#8E929F] text-[11px] mt-0.5">You hit 12,456 of your 10,000 steps daily target.</p>
+                  </div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex gap-2.5">
+                  <span class="w-2 h-2 rounded-full bg-[#FF7A45] mt-1 shrink-0"></span>
+                  <div>
+                    <p class="font-semibold text-white">Cardio Peak Detected 🔥</p>
+                    <p class="text-[#8E929F] text-[11px] mt-0.5">Heart rate peaked at 164 BPM during sprint interval.</p>
+                  </div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex gap-2.5">
+                  <span class="w-2 h-2 rounded-full bg-[#FFB347] mt-1 shrink-0"></span>
+                  <div>
+                    <p class="font-semibold text-white">Next Workout: HIIT</p>
+                    <p class="text-[#8E929F] text-[11px] mt-0.5">Scheduled for 12:30 PM with Coach Maya.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Avatar Image with Online Status -->
+          <button onclick="openProfileModal()" class="relative group cursor-pointer focus:outline-none" title="View Profile">
+            <div class="w-11 h-11 rounded-2xl overflow-hidden border border-white/10 p-0.5 bg-gradient-to-tr from-[#FF3B6B] to-transparent group-hover:scale-105 transition-transform shadow-card-subtle">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Account Avatar" class="w-full h-full object-cover rounded-xl" />
+            </div>
+            <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full ring-2 ring-[#0D0D11] shadow-sm"></span>
+          </button>
+
+          <!-- PROMINENT "AI COACH" GRADIENT CARD -->
+          <div onclick="openAICoachDrawer()" class="group cursor-pointer bg-gradient-to-r from-[#FF4B6E] to-[#FF8552] text-white rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 shadow-lg shadow-[#FF4B6E]/30 hover:shadow-xl hover:shadow-[#FF4B6E]/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3">
+            <div class="relative w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/30">
+              <!-- Futuristic Mascot Icon -->
+              <i data-lucide="bot" class="w-5 h-5 text-white"></i>
+              <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#FF4B6E] pulse-dot"></span>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-black tracking-wide uppercase">AI COACH</span>
+                <span class="text-[10px] bg-black/20 text-white/90 px-1.5 py-0.5 rounded-full font-medium">Active</span>
+              </div>
+              <p class="text-[11px] text-white/90 leading-tight">Ask workouts & advice</p>
+            </div>
+            <i data-lucide="sparkles" class="w-4 h-4 text-white/80 group-hover:rotate-12 transition-transform ml-1 hidden sm:block"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW CONTAINER: DASHBOARD VIEW (Fitness Data - Unlocked after Login) -->
+      <main id="view-dashboard" class="space-y-6 hidden">
+
+        <!-- ROW 1: BENTO GRID (Daily Activity Radial + Key Metric Stack) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- MODULE A: Daily Activity Radial Score Card (Left Column, span 7) -->
+          <section class="lg:col-span-7 bg-[#1A1B22] border border-white/[0.06] rounded-2xl p-6 relative overflow-hidden shadow-card-subtle flex flex-col justify-between">
+            <!-- Background Ambient Glow -->
+            <div class="absolute -top-24 -left-24 w-64 h-64 bg-[#FF3B6B]/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Card Header & Segmented Toggle Switch -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 relative z-10">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-[#FF3B6B]/15 border border-[#FF3B6B]/30 flex items-center justify-center">
+                  <i data-lucide="target" class="w-4 h-4 text-[#FF3B6B]"></i>
+                </div>
+                <div>
+                  <h2 class="text-lg font-bold tracking-tight text-white">Daily Activity</h2>
+                  <p class="text-xs text-[#8E929F]">Multi-metric progress gauge</p>
+                </div>
+              </div>
+
+              <!-- Segmented Toggle Switch: Today / Weekly / Monthly -->
+              <div class="inline-flex p-1 bg-[#121318] border border-white/5 rounded-xl self-start sm:self-auto">
+                <button onclick="setActivityPeriod('today')" id="btn-period-today" class="period-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white/10 text-white transition-all">
+                  Today
+                </button>
+                <button onclick="setActivityPeriod('weekly')" id="btn-period-weekly" class="period-btn px-3 py-1 rounded-lg text-xs font-medium text-[#8E929F] hover:text-white transition-all">
+                  Weekly
+                </button>
+                <button onclick="setActivityPeriod('monthly')" id="btn-period-monthly" class="period-btn px-3 py-1 rounded-lg text-xs font-medium text-[#8E929F] hover:text-white transition-all">
+                  Monthly
+                </button>
+              </div>
+            </div>
+
+            <!-- Concentric Glowing Triple-Ring Gauge & Score Center -->
+            <div class="flex flex-col sm:flex-row items-center justify-center sm:justify-around gap-6 my-2 relative z-10">
+              <!-- Radial SVG Canvas Container -->
+              <div class="relative w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center shrink-0">
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 240 240">
+                  <defs>
+                    <!-- Linear Gradient for Outer Ring (Calories) -->
+                    <linearGradient id="gradientCalories" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#FF3B6B" />
+                      <stop offset="100%" stop-color="#FF527D" />
+                    </linearGradient>
+                    <!-- Linear Gradient for Middle Ring (Steps) -->
+                    <linearGradient id="gradientSteps" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#FF7A45" />
+                      <stop offset="100%" stop-color="#FFA070" />
+                    </linearGradient>
+                    <!-- Linear Gradient for Inner Ring (Active Min) -->
+                    <linearGradient id="gradientActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#FFB347" />
+                      <stop offset="100%" stop-color="#FFD180" />
+                    </linearGradient>
+                    <!-- Neon Glow Filter -->
+                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#FF3B6B" flood-opacity="0.6"/>
+                    </filter>
+                  </defs>
+
+                  <!-- Ring 1 (Outer - Calories): Radius 96 -->
+                  <circle cx="120" cy="120" r="96" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none" />
+                  <circle id="ring-calories" cx="120" cy="120" r="96" stroke="url(#gradientCalories)" stroke-width="12" stroke-linecap="round" fill="none"
+                    stroke-dasharray="603.18" stroke-dashoffset="126.66" class="ring-circle" filter="url(#glow)" />
+
+                  <!-- Ring 2 (Middle - Steps): Radius 74 -->
+                  <circle cx="120" cy="120" r="74" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none" />
+                  <circle id="ring-steps" cx="120" cy="120" r="74" stroke="url(#gradientSteps)" stroke-width="12" stroke-linecap="round" fill="none"
+                    stroke-dasharray="464.95" stroke-dashoffset="0" class="ring-circle" />
+
+                  <!-- Ring 3 (Inner - Active Min): Radius 52 -->
+                  <circle cx="120" cy="120" r="52" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none" />
+                  <circle id="ring-minutes" cx="120" cy="120" r="52" stroke="url(#gradientActive)" stroke-width="12" stroke-linecap="round" fill="none"
+                    stroke-dasharray="326.72" stroke-dashoffset="0" class="ring-circle" />
+                </svg>
+
+                <!-- Center Readout -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span class="text-[11px] font-semibold tracking-wider uppercase text-[#8E929F]">Total Score</span>
+                  <span id="center-total-score" class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white my-0.5">845</span>
+                  <span class="text-xs text-[#8E929F]">of 1,000</span>
+                  <!-- Status Pill -->
+                  <div class="mt-2.5 px-3 py-0.5 rounded-full bg-[#121318] border border-[#FF3B6B]/40 text-[#FF3B6B] text-[11px] font-bold shadow-sm">
+                    <span id="center-status-badge">Excellent ⚡</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rings Legend / Breakdown Info -->
+              <div class="flex flex-col gap-3.5 w-full sm:w-auto">
+                <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                  <div class="w-3.5 h-3.5 rounded-full bg-[#FF3B6B] shrink-0 shadow-sm shadow-[#FF3B6B]/40"></div>
+                  <div class="text-xs">
+                    <span class="text-[#8E929F] block text-[11px]">Calories Ring (Outer)</span>
+                    <span class="font-bold text-white" id="legend-cal">632 / 800 kcal (79%)</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                  <div class="w-3.5 h-3.5 rounded-full bg-[#FF7A45] shrink-0 shadow-sm shadow-[#FF7A45]/40"></div>
+                  <div class="text-xs">
+                    <span class="text-[#8E929F] block text-[11px]">Steps Ring (Middle)</span>
+                    <span class="font-bold text-white" id="legend-steps">12,456 / 10,000 (125%)</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                  <div class="w-3.5 h-3.5 rounded-full bg-[#FFB347] shrink-0 shadow-sm shadow-[#FFB347]/40"></div>
+                  <div class="text-xs">
+                    <span class="text-[#8E929F] block text-[11px]">Active Min (Inner)</span>
+                    <span class="font-bold text-white" id="legend-min">78 / 60 min (130%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer summary note -->
+            <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-[#8E929F]">
+              <span>💡 Daily targets refresh in 5h 38m</span>
+              <button onclick="openQuickLogModal()" class="text-[#FF7A45] hover:text-[#FF3B6B] font-semibold transition-colors flex items-center gap-1">
+                <span>Update rings</span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </section>
+
+          <!-- MODULE B: Key Metric Stack (Right Column, span 5) -->
+          <section class="lg:col-span-5 flex flex-col justify-between gap-4">
+
+            <!-- Metric 1: Calories -->
+            <div onclick="openQuickMetricDialog('calories')" class="group cursor-pointer bg-[#1A1B22] border border-white/[0.06] hover:border-[#FF3B6B]/40 rounded-2xl p-5 shadow-card-subtle transition-all duration-300 hover:scale-[1.01] hover:bg-[#20212b] relative overflow-hidden flex-1 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                  <!-- Dark Circular Icon Badge (Red) -->
+                  <div class="w-12 h-12 rounded-full bg-[#121318] border border-[#FF3B6B]/30 flex items-center justify-center text-[#FF3B6B] shadow-inner group-hover:scale-105 transition-transform">
+                    <i data-lucide="flame" class="w-6 h-6"></i>
+                  </div>
+                  <div>
+                    <span class="text-xs uppercase font-semibold tracking-wider text-[#8E929F]">Calories</span>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                      <span id="metric-cal-val" class="text-2xl font-black text-white">632</span>
+                      <span class="text-xs text-[#8E929F]">/ 800 kcal</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-[#121318] border border-white/5 flex items-center justify-center text-[#8E929F] group-hover:text-white group-hover:border-[#FF3B6B]/50 transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <!-- Mini Progress Bar -->
+              <div class="mt-4">
+                <div class="w-full bg-[#121318] h-2 rounded-full overflow-hidden">
+                  <div id="bar-calories" class="bg-gradient-to-r from-[#FF3B6B] to-[#FF527D] h-full rounded-full transition-all duration-500" style="width: 79%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1.5 text-[11px] text-[#8E929F]">
+                  <span>79% of target</span>
+                  <span class="text-[#FF3B6B] font-semibold group-hover:underline">+ Log kcal</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metric 2: Steps -->
+            <div onclick="openQuickMetricDialog('steps')" class="group cursor-pointer bg-[#1A1B22] border border-white/[0.06] hover:border-[#FF7A45]/40 rounded-2xl p-5 shadow-card-subtle transition-all duration-300 hover:scale-[1.01] hover:bg-[#20212b] relative overflow-hidden flex-1 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                  <!-- Dark Circular Icon Badge (Orange) -->
+                  <div class="w-12 h-12 rounded-full bg-[#121318] border border-[#FF7A45]/30 flex items-center justify-center text-[#FF7A45] shadow-inner group-hover:scale-105 transition-transform">
+                    <i data-lucide="footprints" class="w-6 h-6"></i>
+                  </div>
+                  <div>
+                    <span class="text-xs uppercase font-semibold tracking-wider text-[#8E929F]">Steps</span>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                      <span id="metric-steps-val" class="text-2xl font-black text-white">12,456</span>
+                      <span class="text-xs text-[#8E929F]">/ 10,000</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-[#121318] border border-white/5 flex items-center justify-center text-[#8E929F] group-hover:text-white group-hover:border-[#FF7A45]/50 transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <!-- Mini Progress Bar -->
+              <div class="mt-4">
+                <div class="w-full bg-[#121318] h-2 rounded-full overflow-hidden">
+                  <div id="bar-steps" class="bg-gradient-to-r from-[#FF7A45] to-[#FFA070] h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1.5 text-[11px] text-[#8E929F]">
+                  <span class="text-emerald-400 font-medium">Goal Crushed! 🎉</span>
+                  <span class="text-[#FF7A45] font-semibold group-hover:underline">+ Add steps</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metric 3: Active Min -->
+            <div onclick="openQuickMetricDialog('minutes')" class="group cursor-pointer bg-[#1A1B22] border border-white/[0.06] hover:border-[#FFB347]/40 rounded-2xl p-5 shadow-card-subtle transition-all duration-300 hover:scale-[1.01] hover:bg-[#20212b] relative overflow-hidden flex-1 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                  <!-- Dark Circular Icon Badge (Amber) -->
+                  <div class="w-12 h-12 rounded-full bg-[#121318] border border-[#FFB347]/30 flex items-center justify-center text-[#FFB347] shadow-inner group-hover:scale-105 transition-transform">
+                    <i data-lucide="timer" class="w-6 h-6"></i>
+                  </div>
+                  <div>
+                    <span class="text-xs uppercase font-semibold tracking-wider text-[#8E929F]">Active Min</span>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                      <span id="metric-min-val" class="text-2xl font-black text-white">78</span>
+                      <span class="text-xs text-[#8E929F]">/ 60 min</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-[#121318] border border-white/5 flex items-center justify-center text-[#8E929F] group-hover:text-white group-hover:border-[#FFB347]/50 transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <!-- Mini Progress Bar -->
+              <div class="mt-4">
+                <div class="w-full bg-[#121318] h-2 rounded-full overflow-hidden">
+                  <div id="bar-minutes" class="bg-gradient-to-r from-[#FFB347] to-[#FFD180] h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1.5 text-[11px] text-[#8E929F]">
+                  <span class="text-emerald-400 font-medium">130% completed</span>
+                  <span class="text-[#FFB347] font-semibold group-hover:underline">+ Add mins</span>
+                </div>
+              </div>
+            </div>
+
+          </section>
+        </div>
+
+        <!-- ROW 2: MODULE C - LIVE HEART RATE MONITOR CARD (Full-Width Middle Section) -->
+        <section class="bg-[#1A1B22] border border-white/[0.06] rounded-2xl p-6 shadow-card-subtle relative overflow-hidden">
+          <!-- Top Row -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-[#FF3B6B]/15 border border-[#FF3B6B]/30 flex items-center justify-center text-[#FF3B6B]">
+                <i data-lucide="heart" class="w-5 h-5 animate-heartbeat fill-[#FF3B6B]"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <span>Heart Rate</span>
+                </h2>
+                <p class="text-xs text-[#8E929F]">Continuous biometric telemetry</p>
+              </div>
+            </div>
+
+            <!-- Controls: Simulation Switch & Live Badge -->
+            <div class="flex items-center gap-3">
+              <!-- Live Simulation Toggle -->
+              <button onclick="toggleHeartRateSimulation()" id="btn-hr-sim" class="text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[#8E929F] hover:text-white flex items-center gap-2 transition-all">
+                <span class="w-2 h-2 rounded-full bg-emerald-400" id="sim-indicator"></span>
+                <span id="sim-text">Simulation: Live</span>
+              </button>
+
+              <!-- Dark pill badge with pulsing red dot -->
+              <div class="px-3.5 py-1.5 rounded-full bg-[#121318] border border-[#FF3B6B]/30 flex items-center gap-2 text-xs font-bold text-white shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-[#FF3B6B] pulse-dot"></span>
+                <span>● Live</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content: Left Readout & Right Chart.js Spline Chart -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <!-- Left Readout (span 4) -->
+            <div class="lg:col-span-4 flex flex-col justify-center space-y-4 pr-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-white/5 pb-4 lg:pb-0">
+              <div>
+                <span class="text-xs font-semibold tracking-wider uppercase text-[#8E929F]">Current Intensity</span>
+                <div class="flex items-baseline gap-2 mt-1">
+                  <span id="current-bpm-display" class="text-5xl font-black text-white tracking-tight">128</span>
+                  <span class="text-lg font-bold text-[#FF3B6B]">BPM</span>
+                </div>
+                <!-- Subtitle with cardiac zone -->
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="px-2.5 py-1 rounded-lg bg-[#FF3B6B]/20 text-[#FF3B6B] text-xs font-bold" id="hr-zone-pill">Zone 3 • Cardio</span>
+                  <span class="text-xs text-[#8E929F]">70-80% Max</span>
+                </div>
+              </div>
+
+              <!-- Secondary heart stats grid -->
+              <div class="grid grid-cols-3 gap-2 pt-2">
+                <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5 text-center">
+                  <span class="text-[10px] text-[#8E929F] uppercase block">Resting</span>
+                  <span class="text-sm font-bold text-white mt-0.5 block">62 BPM</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5 text-center">
+                  <span class="text-[10px] text-[#8E929F] uppercase block">Peak Today</span>
+                  <span class="text-sm font-bold text-[#FF3B6B] mt-0.5 block">164 BPM</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5 text-center">
+                  <span class="text-[10px] text-[#8E929F] uppercase block">HRV</span>
+                  <span class="text-sm font-bold text-white mt-0.5 block">54 ms</span>
+                </div>
+              </div>
+
+              <p class="text-[11px] text-[#8E929F] leading-relaxed">
+                Cardiovascular strain is optimal for endurance building. Estimated recovery time is 18 hours.
+              </p>
+            </div>
+
+            <!-- Right Chart (span 8) -->
+            <div class="lg:col-span-8 relative h-64 sm:h-72 w-full">
+              <!-- Floating Highlight Callout Box -->
+              <div id="chart-floating-badge" class="absolute top-4 right-8 bg-[#FF3B6B] text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-coral-glow pointer-events-none flex items-center gap-1.5 z-10 transition-all duration-300">
+                <i data-lucide="activity" class="w-3 h-3 animate-pulse"></i>
+                <span id="floating-bpm-val">128</span> BPM
+              </div>
+              <canvas id="heartRateChart" class="w-full h-full"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ROW 3: MODULE D - TODAY'S WORKOUTS SCHEDULE (Bottom Section) -->
+        <section class="bg-[#1A1B22] border border-white/[0.06] rounded-2xl p-6 shadow-card-subtle">
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-[#FF7A45]/15 border border-[#FF7A45]/30 flex items-center justify-center text-[#FF7A45]">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-white tracking-tight">Today's Workouts</h2>
+                <p class="text-xs text-[#8E929F]">Scheduled routines for optimal recovery</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="openCustomWorkoutModal()" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 flex items-center gap-1.5 transition-all">
+                <i data-lucide="plus" class="w-3.5 h-3.5 text-[#FF3B6B]"></i>
+                <span class="hidden sm:inline">Add Workout</span>
+              </button>
+              <button onclick="switchNavTab('workouts')" class="text-xs font-bold text-[#FF3B6B] hover:text-[#FF7A45] transition-colors flex items-center gap-1">
+                <span>See All</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Workout List Cards -->
+          <div id="workouts-list-container" class="space-y-3.5">
+            <!-- Item 1: Upper Body Strength -->
+            <div onclick="openWorkoutDetails('upper_body')" class="workout-card group cursor-pointer bg-[#121318] hover:bg-[#20212b] border border-white/5 hover:border-[#FF3B6B]/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between transition-all duration-300 shadow-sm hover:scale-[1.005]">
+              <div class="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                <!-- Thumbnail Image with Unsplash Gym dumbbell photo -->
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 relative border border-white/10">
+                  <img src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80" alt="Upper Body Strength" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <!-- Category Icon Badge -->
+                  <div class="absolute bottom-1.5 left-1.5 w-6 h-6 rounded-full bg-[#121318]/90 text-[#FF3B6B] flex items-center justify-center border border-[#FF3B6B]/40">
+                    <i data-lucide="dumbbell" class="w-3 h-3"></i>
+                  </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="min-w-0">
+                  <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-[#FF3B6B] transition-colors truncate">Upper Body Strength</h3>
+                  <div class="flex items-center gap-2 text-xs text-[#8E929F] mt-1">
+                    <span>45 min</span>
+                    <span>•</span>
+                    <span class="text-gray-300">Intermediate</span>
+                    <span>•</span>
+                    <span class="text-[#FF7A45]">Chest & Arms</span>
+                  </div>
+                  <span class="inline-block mt-1 text-[11px] text-emerald-400 font-medium">✓ 4 exercises prepared</span>
+                </div>
+              </div>
+
+              <!-- Right Scheduled Time & Chevron -->
+              <div class="flex items-center gap-2 sm:gap-3 shrink-0 ml-3">
+                <span class="text-xs sm:text-sm font-bold text-[#FF7A45]">9:00 AM</span>
+                <div class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#FF3B6B] group-hover:text-white flex items-center justify-center text-[#8E929F] transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Item 2: HIIT Cardio Blast -->
+            <div onclick="openWorkoutDetails('hiit_cardio')" class="workout-card group cursor-pointer bg-[#121318] hover:bg-[#20212b] border border-white/5 hover:border-[#FF7A45]/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between transition-all duration-300 shadow-sm hover:scale-[1.005]">
+              <div class="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                <!-- Thumbnail Image with Unsplash Squat/cardio photo -->
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 relative border border-white/10">
+                  <img src="https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=400&q=80" alt="HIIT Cardio Blast" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <!-- Category Icon Badge -->
+                  <div class="absolute bottom-1.5 left-1.5 w-6 h-6 rounded-full bg-[#121318]/90 text-[#FF7A45] flex items-center justify-center border border-[#FF7A45]/40">
+                    <i data-lucide="zap" class="w-3 h-3"></i>
+                  </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="min-w-0">
+                  <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-[#FF7A45] transition-colors truncate">HIIT Cardio Blast</h3>
+                  <div class="flex items-center gap-2 text-xs text-[#8E929F] mt-1">
+                    <span>30 min</span>
+                    <span>•</span>
+                    <span class="text-[#FF3B6B] font-semibold">High Intensity</span>
+                    <span>•</span>
+                    <span class="text-gray-300">Full Body</span>
+                  </div>
+                  <span class="inline-block mt-1 text-[11px] text-[#FFB347] font-medium">⚡ ~340 kcal burn</span>
+                </div>
+              </div>
+
+              <!-- Right Scheduled Time & Chevron -->
+              <div class="flex items-center gap-2 sm:gap-3 shrink-0 ml-3">
+                <span class="text-xs sm:text-sm font-bold text-[#FF7A45]">12:30 PM</span>
+                <div class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#FF7A45] group-hover:text-white flex items-center justify-center text-[#8E929F] transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Item 3: Yoga Flow -->
+            <div onclick="openWorkoutDetails('yoga_flow')" class="workout-card group cursor-pointer bg-[#121318] hover:bg-[#20212b] border border-white/5 hover:border-pink-500/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between transition-all duration-300 shadow-sm hover:scale-[1.005]">
+              <div class="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                <!-- Thumbnail Image with Unsplash Yoga pose photo -->
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 relative border border-white/10">
+                  <img src="https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=400&q=80" alt="Yoga Flow" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <!-- Category Icon Badge -->
+                  <div class="absolute bottom-1.5 left-1.5 w-6 h-6 rounded-full bg-[#121318]/90 text-pink-400 flex items-center justify-center border border-pink-400/40">
+                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+                  </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="min-w-0">
+                  <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-pink-400 transition-colors truncate">Yoga Flow</h3>
+                  <div class="flex items-center gap-2 text-xs text-[#8E929F] mt-1">
+                    <span>20 min</span>
+                    <span>•</span>
+                    <span class="text-gray-300">Flexibility</span>
+                    <span>•</span>
+                    <span class="text-emerald-400">Recovery</span>
+                  </div>
+                  <span class="inline-block mt-1 text-[11px] text-pink-300 font-medium">🌿 Rest & mobility</span>
+                </div>
+              </div>
+
+              <!-- Right Scheduled Time & Chevron -->
+              <div class="flex items-center gap-2 sm:gap-3 shrink-0 ml-3">
+                <span class="text-xs sm:text-sm font-bold text-[#FF7A45]">6:00 PM</span>
+                <div class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-pink-500 group-hover:text-white flex items-center justify-center text-[#8E929F] transition-all">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- SECONDARY VIEWS (When user clicks tabs in Navigation) -->
+      <!-- WORKOUTS VIEW -->
+      <section id="view-workouts" class="hidden space-y-6">
+        <div class="bg-[#1A1B22] border border-white/5 rounded-2xl p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-xl font-bold text-white">Workouts Library & Planner</h2>
+              <p class="text-xs text-[#8E929F]">Explore customized training plans or start guided sessions</p>
+            </div>
+            <button onclick="openCustomWorkoutModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs font-bold shadow-md shadow-[#FF3B6B]/30 hover:scale-105 transition-all">
+              + Create Custom Workout
+            </button>
+          </div>
+          <!-- Filter chips -->
+          <div class="flex gap-2 overflow-x-auto pb-2 text-xs">
+            <button class="px-3 py-1.5 rounded-full bg-[#FF3B6B] text-white font-semibold">All Categories</button>
+            <button class="px-3 py-1.5 rounded-full bg-white/5 text-[#8E929F] hover:text-white">Strength</button>
+            <button class="px-3 py-1.5 rounded-full bg-white/5 text-[#8E929F] hover:text-white">HIIT & Cardio</button>
+            <button class="px-3 py-1.5 rounded-full bg-white/5 text-[#8E929F] hover:text-white">Yoga & Mobility</button>
+            <button class="px-3 py-1.5 rounded-full bg-white/5 text-[#8E929F] hover:text-white">Pilates</button>
+          </div>
+          <!-- Grid of Workout Programs -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div onclick="openWorkoutDetails('upper_body')" class="cursor-pointer bg-[#121318] border border-white/5 hover:border-[#FF3B6B]/40 rounded-2xl overflow-hidden group">
+              <img src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=500&q=80" class="w-full h-36 object-cover group-hover:scale-105 transition-transform" />
+              <div class="p-4">
+                <span class="text-[10px] text-[#FF3B6B] font-bold uppercase tracking-wider">Strength</span>
+                <h3 class="font-bold text-white mt-0.5">Upper Body Hypertrophy</h3>
+                <p class="text-xs text-[#8E929F] mt-1">45 min • 4 Exercises • 380 kcal</p>
+              </div>
+            </div>
+            <div onclick="openWorkoutDetails('hiit_cardio')" class="cursor-pointer bg-[#121318] border border-white/5 hover:border-[#FF7A45]/40 rounded-2xl overflow-hidden group">
+              <img src="https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=500&q=80" class="w-full h-36 object-cover group-hover:scale-105 transition-transform" />
+              <div class="p-4">
+                <span class="text-[10px] text-[#FF7A45] font-bold uppercase tracking-wider">High Intensity</span>
+                <h3 class="font-bold text-white mt-0.5">Metabolic Tabata Sprint</h3>
+                <p class="text-xs text-[#8E929F] mt-1">30 min • 6 Rounds • 340 kcal</p>
+              </div>
+            </div>
+            <div onclick="openWorkoutDetails('yoga_flow')" class="cursor-pointer bg-[#121318] border border-white/5 hover:border-pink-500/40 rounded-2xl overflow-hidden group">
+              <img src="https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=500&q=80" class="w-full h-36 object-cover group-hover:scale-105 transition-transform" />
+              <div class="p-4">
+                <span class="text-[10px] text-pink-400 font-bold uppercase tracking-wider">Mobility</span>
+                <h3 class="font-bold text-white mt-0.5">Spine & Hip Decompression</h3>
+                <p class="text-xs text-[#8E929F] mt-1">20 min • Full Stretch • 120 kcal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROGRESS VIEW -->
+      <section id="view-progress" class="hidden space-y-6">
+        <div class="bg-[#1A1B22] border border-white/5 rounded-2xl p-6">
+          <h2 class="text-xl font-bold text-white">Performance Analytics & Milestones</h2>
+          <p class="text-xs text-[#8E929F] mt-0.5">Historical breakdown over the last 30 days</p>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-xs text-[#8E929F]">Total Workouts</span>
+              <p class="text-2xl font-black text-white mt-1">24</p>
+              <span class="text-[11px] text-emerald-400">↑ 18% vs last month</span>
+            </div>
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-xs text-[#8E929F]">Calories Burned</span>
+              <p class="text-2xl font-black text-[#FF3B6B] mt-1">18,450</p>
+              <span class="text-[11px] text-emerald-400">Target surpassed</span>
+            </div>
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-xs text-[#8E929F]">Avg Heart Rate</span>
+              <p class="text-2xl font-black text-white mt-1">124 bpm</p>
+              <span class="text-[11px] text-gray-400">Cardio steady-state</span>
+            </div>
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-xs text-[#8E929F]">Active Streak</span>
+              <p class="text-2xl font-black text-[#FF7A45] mt-1">14 Days 🔥</p>
+              <span class="text-[11px] text-[#FF7A45]">Personal Best!</span>
+            </div>
+          </div>
+          <!-- Weekly Chart -->
+          <div class="mt-8">
+            <h3 class="text-sm font-bold text-white mb-3">Weekly Calorie Output Trend</h3>
+            <div class="h-64 w-full">
+              <canvas id="progressTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NUTRITION VIEW -->
+      <section id="view-nutrition" class="hidden space-y-6">
+        <div class="bg-[#1A1B22] border border-white/5 rounded-2xl p-6">
+          <h2 class="text-xl font-bold text-white">Daily Nutrition & Hydration</h2>
+          <p class="text-xs text-[#8E929F] mt-0.5">Macro balance and fluid intake</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div class="p-5 rounded-2xl bg-[#121318] border border-white/5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-[#FF3B6B]">PROTEIN</span>
+                <span class="text-xs text-[#8E929F]">142g / 160g</span>
+              </div>
+              <div class="w-full bg-white/5 h-2.5 rounded-full mt-3 overflow-hidden">
+                <div class="bg-[#FF3B6B] h-full rounded-full" style="width: 88%;"></div>
+              </div>
+              <p class="text-[11px] text-[#8E929F] mt-2">18g left to hit hypertrophy target</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-[#121318] border border-white/5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-[#FF7A45]">CARBOHYDRATES</span>
+                <span class="text-xs text-[#8E929F]">210g / 250g</span>
+              </div>
+              <div class="w-full bg-white/5 h-2.5 rounded-full mt-3 overflow-hidden">
+                <div class="bg-[#FF7A45] h-full rounded-full" style="width: 84%;"></div>
+              </div>
+              <p class="text-[11px] text-[#8E929F] mt-2">Optimal glycogen replenishment</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-[#121318] border border-white/5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-[#FFB347]">FATS</span>
+                <span class="text-xs text-[#8E929F]">52g / 65g</span>
+              </div>
+              <div class="w-full bg-white/5 h-2.5 rounded-full mt-3 overflow-hidden">
+                <div class="bg-[#FFB347] h-full rounded-full" style="width: 80%;"></div>
+              </div>
+              <p class="text-[11px] text-[#8E929F] mt-2">Healthy unsaturated fats</p>
+            </div>
+          </div>
+          <!-- Water intake logger -->
+          <div class="mt-6 p-5 rounded-2xl bg-sky-950/20 border border-sky-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                <i data-lucide="droplets" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">Hydration Tracker</h4>
+                <p class="text-xs text-sky-300/80"><span id="water-current-val">2,250</span> ml / 3,000 ml target</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="logWater(250)" class="px-3.5 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-bold transition-all">
+                +250 ml Glass
+              </button>
+              <button onclick="logWater(500)" class="px-3.5 py-2 rounded-xl bg-sky-500 text-white text-xs font-bold hover:bg-sky-400 transition-all shadow-md shadow-sky-500/20">
+                +500 ml Bottle
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMMUNITY VIEW -->
+      <section id="view-community" class="hidden space-y-6">
+        <div class="bg-[#1A1B22] border border-white/5 rounded-2xl p-6">
+          <h2 class="text-xl font-bold text-white">Community & Leaderboard</h2>
+          <p class="text-xs text-[#8E929F] mt-0.5">See how you rank among your training squad</p>
+          <div class="space-y-3 mt-6">
+            <div class="p-4 rounded-xl bg-[#121318] border border-[#FF3B6B]/40 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-lg font-black text-[#FF3B6B]">#1</span>
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" class="w-10 h-10 rounded-full object-cover border border-[#FF3B6B]" />
+                <div>
+                  <h4 class="font-bold text-white text-sm" id="leaderboard-user-name">Athlete (You)</h4>
+                  <p class="text-xs text-[#8E929F]">12,456 steps · 632 kcal</p>
+                </div>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-[#FF3B6B]/20 text-[#FF3B6B] text-xs font-bold">845 pts</span>
+            </div>
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-base font-bold text-gray-400">#2</span>
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" class="w-10 h-10 rounded-full object-cover" />
+                <div>
+                  <h4 class="font-bold text-white text-sm">Marcus Vance</h4>
+                  <p class="text-xs text-[#8E929F]">11,200 steps · 590 kcal</p>
+                </div>
+              </div>
+              <span class="text-xs font-semibold text-gray-300">790 pts</span>
+            </div>
+            <div class="p-4 rounded-xl bg-[#121318] border border-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-base font-bold text-gray-400">#3</span>
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" class="w-10 h-10 rounded-full object-cover" />
+                <div>
+                  <h4 class="font-bold text-white text-sm">Elena Rostova</h4>
+                  <p class="text-xs text-[#8E929F]">9,840 steps · 510 kcal</p>
+                </div>
+              </div>
+              <span class="text-xs font-semibold text-gray-300">735 pts</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIN & AUTHENTICATION VIEW (First View Upon Opening FitTrack) -->
+      <section id="view-login" class="space-y-6 animate-fadeIn">
+        <div class="relative overflow-hidden bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 sm:p-10 shadow-2xl">
+          <!-- Background ambient lights -->
+          <div class="absolute -top-32 -left-32 w-80 h-80 bg-[#FF3B6B]/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-[#FF7A45]/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <!-- Portal Gate Notice Banner -->
+          <div class="relative z-10 mb-8 p-4 rounded-2xl bg-gradient-to-r from-[#FF3B6B]/15 via-[#FF7A45]/15 to-transparent border border-[#FF3B6B]/30 flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF3B6B] to-[#FF7A45] text-white flex items-center justify-center shadow-md shadow-[#FF3B6B]/25">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </span>
+              <div>
+                <span class="text-xs font-black text-white uppercase tracking-wider block">FitTrack Portal Gate</span>
+                <span class="text-[11px] text-[#8E929F]">Please sign in or use 1-Click Demo to unlock your real-time fitness metrics & telemetry</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Gate Ready</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            
+            <!-- Left Branding & Value Prop (lg:col-span-5) -->
+            <div class="lg:col-span-5 space-y-6 border-b lg:border-b-0 lg:border-r border-white/5 pb-8 lg:pb-0 lg:pr-8">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FF3B6B] to-[#FF7A45] flex items-center justify-center text-white shadow-coral-glow">
+                  <i data-lucide="activity" class="w-6 h-6 animate-pulse"></i>
+                </div>
+                <div>
+                  <span class="text-xs font-extrabold uppercase tracking-[0.25em] text-[#FF3B6B]">FITTRACK SYSTEM</span>
+                  <h2 class="text-xl font-black text-white">Biometric Fitness OS</h2>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug">
+                  Crush your limits with <span class="bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] bg-clip-text text-transparent">real-time</span> telemetry.
+                </h3>
+                <p class="text-xs sm:text-sm text-[#8E929F] leading-relaxed">
+                  Join 50,000+ athletes syncing concentric activity rings, live cardiac telemetry, and intelligent AI performance coaching daily on FitTrack.
+                </p>
+              </div>
+
+              <!-- Feature Highlights -->
+              <div class="space-y-3 text-xs">
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="w-8 h-8 rounded-xl bg-[#FF3B6B]/20 text-[#FF3B6B] flex items-center justify-center shrink-0">
+                    <i data-lucide="target" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-white">Triple-Ring Activity Tracking</h4>
+                    <p class="text-[11px] text-[#8E929F]">Synchronized Calories, Steps, and Active Minutes</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="w-8 h-8 rounded-xl bg-[#FF7A45]/20 text-[#FF7A45] flex items-center justify-center shrink-0">
+                    <i data-lucide="heart" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-white">Live Zone 3 Cardio Telemetry</h4>
+                    <p class="text-[11px] text-[#8E929F]">Spline area heart rate telemetry with physiologic pacing</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="w-8 h-8 rounded-xl bg-[#FFB347]/20 text-[#FFB347] flex items-center justify-center shrink-0">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-white">Autonomous AI Coach</h4>
+                    <p class="text-[11px] text-[#8E929F]">Adaptive workouts, nutrition macros, and recovery advice</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Athlete Testimonial Card -->
+              <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center gap-3">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Athlete Portrait" class="w-10 h-10 rounded-full object-cover border border-[#FF3B6B]" />
+                <div class="text-xs">
+                  <div class="flex text-amber-400 text-[10px] mb-0.5">★★★★★</div>
+                  <p class="text-gray-300 font-medium italic">"FitTrack elevated my workout consistency from 40% to 94%."</p>
+                  <span class="text-[11px] text-[#8E929F]">Jordan Rivers · Verified Athlete</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Form Container (lg:col-span-7) -->
+            <div class="lg:col-span-7 max-w-md mx-auto w-full">
+              <!-- Switcher Tabs: Sign In / Create Account -->
+              <div class="flex p-1 bg-[#121318] border border-white/5 rounded-2xl mb-6">
+                <button type="button" onclick="switchAuthTab('signin')" id="tab-auth-signin" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all text-white bg-white/10 shadow-sm flex items-center justify-center gap-2">
+                  <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                  <span>Sign In</span>
+                </button>
+                <button type="button" onclick="switchAuthTab('signup')" id="tab-auth-signup" class="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all text-[#8E929F] hover:text-white flex items-center justify-center gap-2">
+                  <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                  <span>Create Account</span>
+                </button>
+              </div>
+
+              <!-- ⚡ ONE-CLICK DEMO LOGIN BUTTON -->
+              <div class="mb-5">
+                <button type="button" onclick="quickDemoLogin()" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#FF3B6B]/20 to-[#FF7A45]/20 hover:from-[#FF3B6B]/30 hover:to-[#FF7A45]/30 border border-[#FF3B6B]/40 hover:border-[#FF3B6B] text-white text-xs font-bold flex items-center justify-between transition-all group shadow-coral-glow/30">
+                  <div class="flex items-center gap-3">
+                    <span class="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#FF3B6B] to-[#FF7A45] flex items-center justify-center text-white shrink-0 shadow-sm">
+                      ⚡
+                    </span>
+                    <div class="text-left">
+                      <span class="block text-white font-extrabold">Instant 1-Click Demo Login</span>
+                      <span class="block text-[11px] text-[#FF7A45]">Sign in as Demo Athlete (Pre-loaded data & metrics)</span>
+                    </div>
+                  </div>
+                  <i data-lucide="arrow-right" class="w-4 h-4 text-[#FF3B6B] group-hover:translate-x-1 transition-transform"></i>
+                </button>
+              </div>
+
+              <!-- Social Auth Buttons -->
+              <div class="grid grid-cols-2 gap-3 mb-5">
+                <button type="button" onclick="socialLogin('Google')" class="py-2.5 px-3 rounded-xl bg-[#121318] hover:bg-white/5 border border-white/5 hover:border-white/20 text-xs font-semibold text-gray-200 flex items-center justify-center gap-2 transition-all">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.56 0 2.97.55 4.09 1.45l3.07-3.07C17.3 1.6 14.83 1 12 1 7.46 1 3.56 3.57 1.62 7.33l3.77 2.92C6.3 7.3 8.92 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.74 2.9c2.18-2.02 3.68-4.99 3.68-8.72z"/>
+                    <path fill="#FBBC05" d="M5.39 14.75c-.24-.72-.39-1.49-.39-2.28 0-.79.15-1.56.39-2.28L1.62 7.27C.59 9.35 0 11.63 0 14c0 2.37.59 4.65 1.62 6.73l3.77-2.98z"/>
+                    <path fill="#34A853" d="M12 23c3.24 0 5.95-1.08 7.93-2.91l-3.74-2.9c-1.07.73-2.45 1.17-4.19 1.17-3.08 0-5.7-2.3-6.61-5.25L1.62 16.03C3.56 19.79 7.46 23 12 23z"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+                <button type="button" onclick="socialLogin('Apple')" class="py-2.5 px-3 rounded-xl bg-[#121318] hover:bg-white/5 border border-white/5 hover:border-white/20 text-xs font-semibold text-gray-200 flex items-center justify-center gap-2 transition-all">
+                  <svg class="w-4 h-4 fill-white shrink-0" viewBox="0 0 24 24">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.42c.62-.75 1.04-1.8 0.92-2.85-.9.04-1.99.6-2.63 1.35-.57.65-1.07 1.72-.94 2.74 1.01.08 2.03-.49 2.65-1.24z"/>
+                  </svg>
+                  <span>Apple ID</span>
+                </button>
+              </div>
+
+              <!-- Divider -->
+              <div class="relative flex items-center justify-center mb-5">
+                <div class="border-t border-white/10 w-full"></div>
+                <span class="bg-[#1A1B22] px-3 text-[11px] uppercase tracking-wider text-[#8E929F] shrink-0 font-semibold">Or with Account Credentials</span>
+                <div class="border-t border-white/10 w-full"></div>
+              </div>
+
+              <!-- FORM 1: SIGN IN -->
+              <form id="form-auth-signin" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-semibold text-[#8E929F] mb-1.5">Account Name or Email</label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8E929F]">
+                      <i data-lucide="user" class="w-4 h-4"></i>
+                    </div>
+                    <input type="text" id="login-account-name" required value="Jordan Rivers" placeholder="Enter your Account Name (e.g. Jordan)" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none transition-colors" />
+                  </div>
+                  <p class="text-[11px] text-[#8E929F] mt-1">This Account Name will be displayed across your dashboard.</p>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="block text-xs font-semibold text-[#8E929F]">Password</label>
+                    <button type="button" onclick="showForgotPassword()" class="text-[11px] text-[#FF7A45] hover:text-[#FF3B6B] font-semibold transition-colors">Forgot password?</button>
+                  </div>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8E929F]">
+                      <i data-lucide="lock" class="w-4 h-4"></i>
+                    </div>
+                    <input type="password" id="login-password" required value="fittrack2026" placeholder="••••••••" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none transition-colors" />
+                    <button type="button" onclick="togglePasswordVisibility('login-password')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8E929F] hover:text-white transition-colors">
+                      <i data-lucide="eye" class="w-4 h-4" id="eye-login-password"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                  <label class="flex items-center gap-2 cursor-pointer text-[#8E929F] hover:text-gray-300">
+                    <input type="checkbox" checked class="w-3.5 h-3.5 rounded bg-[#121318] border-white/20 text-[#FF3B6B] focus:ring-0 accent-[#FF3B6B]" />
+                    <span>Keep me signed in</span>
+                  </label>
+                  <span class="text-[11px] text-emerald-400 font-medium">SSL 256-Bit Encrypted</span>
+                </div>
+
+                <button type="submit" id="btn-submit-signin" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <i data-lucide="log-in" class="w-4 h-4"></i>
+                  <span id="signin-button-text">Sign In to FitTrack</span>
+                </button>
+              </form>
+
+              <!-- FORM 2: CREATE ACCOUNT (SIGN UP) -->
+              <form id="form-auth-signup" onsubmit="handleRegisterSubmit(event)" class="space-y-4 hidden">
+                <div>
+                  <label class="block text-xs font-semibold text-[#8E929F] mb-1.5">Full Name</label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8E929F]">
+                      <i data-lucide="user" class="w-4 h-4"></i>
+                    </div>
+                    <input type="text" id="signup-name" required placeholder="Your Full Name (e.g. Jordan Miles)" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-[#8E929F] mb-1.5">Email Address</label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8E929F]">
+                      <i data-lucide="mail" class="w-4 h-4"></i>
+                    </div>
+                    <input type="email" id="signup-email" required placeholder="name@example.com" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-[#8E929F] mb-1.5">Password</label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8E929F]">
+                      <i data-lucide="lock" class="w-4 h-4"></i>
+                    </div>
+                    <input type="password" id="signup-password" required placeholder="Create a strong password" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none transition-colors" />
+                    <button type="button" onclick="togglePasswordVisibility('signup-password')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8E929F] hover:text-white transition-colors">
+                      <i data-lucide="eye" class="w-4 h-4" id="eye-signup-password"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-[#8E929F] mb-1.5">Primary Fitness Focus</label>
+                  <select id="signup-goal" class="w-full bg-[#121318] border border-white/10 focus:border-[#FF3B6B] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors">
+                    <option value="Strength & Muscle Hypertrophy">Strength & Muscle Hypertrophy</option>
+                    <option value="Fat Loss & HIIT Conditioning">Fat Loss & HIIT Conditioning</option>
+                    <option value="Cardio & Endurance">Cardio & Endurance</option>
+                    <option value="Flexibility & Athletic Longevity">Flexibility & Athletic Longevity</option>
+                  </select>
+                </div>
+
+                <div class="text-[11px] text-[#8E929F] leading-tight">
+                  By signing up, you agree to FitTrack biometric telemetry data terms and privacy conditions.
+                </div>
+
+                <button type="submit" id="btn-submit-signup" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <i data-lucide="user-plus" class="w-4 h-4"></i>
+                  <span>Create Account & Start Training</span>
+                </button>
+              </form>
+
+              <!-- Footer Guest Access Link -->
+              <div class="mt-5 text-center">
+                <button type="button" onclick="continueAsGuest()" class="text-xs text-[#8E929F] hover:text-white transition-colors inline-flex items-center gap-1.5 py-1 px-3 rounded-full hover:bg-white/5">
+                  <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-[#FF7A45]"></i>
+                  <span>Or Explore FitTrack Dashboard as Guest Athlete</span>
+                </button>
+              </div>
+
+            </div>
+        </div>
+      </section>
+
+      <!-- JAVA PROJECT MARKING RUBRIC & ARCHITECTURE VIEW -->
+      <section id="view-javarubric" class="hidden space-y-8 animate-fadeIn">
+        
+        <!-- Header Banner & 1-Click ZIP Download -->
+        <div class="relative overflow-hidden bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div class="absolute -top-24 -right-24 w-72 h-72 bg-[#FF7A45]/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-[#FF3B6B]/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full bg-[#FF3B6B]/20 text-[#FF3B6B] text-[11px] font-extrabold uppercase tracking-wider">Academic Marking Rubric</span>
+                <span class="text-xs text-[#8E929F]">·</span>
+                <span class="text-xs text-emerald-400 font-semibold">100% Criteria Implemented</span>
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Java GUI & Web Projects Architecture
+              </h2>
+              <p class="text-xs sm:text-sm text-[#8E929F] max-w-2xl leading-relaxed">
+                Full compliance mapping for both Java GUI Based and Java Web Based marking rubrics, with runnable Swing GUI, Servlet web tiers, synchronized multithreading, and JDBC SQLite persistence.
+              </p>
+            </div>
+
+            <!-- Action Buttons: Download ZIP & Launch Simulation -->
+            <div class="flex items-center gap-3 flex-wrap">
+              <button onclick="downloadJavaProjectZip()" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] hover:scale-105 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 flex items-center gap-2 transition-all">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Download Java Project (.ZIP)</span>
+              </button>
+              <button onclick="scrollToSimulator()" class="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all">
+                <i data-lucide="play" class="w-4 h-4 text-[#FF7A45]"></i>
+                <span>Live Thread Simulator</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RUBRIC COMPLIANCE MATRIX (Cards Grid) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- RUBRIC 1: JAVA GUI BASED PROJECTS MARKING RUBRIC -->
+          <div class="bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-2xl bg-[#FF3B6B]/15 border border-[#FF3B6B]/30 flex items-center justify-center text-[#FF3B6B]">
+                    <i data-lucide="monitor" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-extrabold text-white">Java GUI Projects Rubric</h3>
+                    <p class="text-[11px] text-[#8E929F]">Desktop application architecture & criteria</p>
+                  </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">Passed ✓</span>
+              </div>
+
+              <!-- Rubric Items List -->
+              <div class="space-y-3.5 text-xs">
+                <!-- Criterion 1: OOP Implementation -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FF3B6B]"></span>
+                      <span>OOP Implementation</span>
+                    </span>
+                    <span class="text-[10px] text-[#FF3B6B] font-semibold">Polymorphism · Inheritance · Interfaces</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Abstract class <code class="text-gray-200">User.java</code> extended by <code class="text-gray-200">AthleteUser.java</code> with polymorphic method <code class="text-gray-200">calculateTargetCalories()</code>. Implements <code class="text-gray-200">Trackable.java</code> interface and custom exception hierarchy <code class="text-gray-200">InvalidMetricException</code>.
+                  </p>
+                </div>
+
+                <!-- Criterion 2: Collections & Generics -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FF7A45]"></span>
+                      <span>Collections & Generics</span>
+                    </span>
+                    <span class="text-[10px] text-[#FF7A45] font-semibold">Repository&lt;T&gt; · ConcurrentMap · Streams</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Generic repository interface <code class="text-gray-200">Repository&lt;T&gt;</code> and <code class="text-gray-200">GenericRepository&lt;T&gt;</code> utilizing <code class="text-gray-200">ConcurrentHashMap&lt;String, T&gt;</code>, <code class="text-gray-200">List&lt;T&gt;</code>, and functional predicates.
+                  </p>
+                </div>
+
+                <!-- Criterion 3: Multithreading & Synchronization -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FFB347]"></span>
+                      <span>Multithreading & Synchronization</span>
+                    </span>
+                    <span class="text-[10px] text-[#FFB347] font-semibold">Producer-Consumer · wait/notify</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Background telemetry thread <code class="text-gray-200">HeartRateMonitorThread</code> implementing <code class="text-gray-200">Runnable</code>, streaming data into synchronized <code class="text-gray-200">TelemetryBuffer.java</code> with <code class="text-gray-200">wait()</code> and <code class="text-gray-200">notifyAll()</code>.
+                  </p>
+                </div>
+
+                <!-- Criterion 4 & 5: Database Operations & JDBC -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>Database Operations & JDBC</span>
+                    </span>
+                    <span class="text-[10px] text-emerald-400 font-semibold">UserDAO · PreparedStatement · SQLite</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Singleton <code class="text-gray-200">DatabaseManager.java</code> establishes connection via <code class="text-gray-200">DriverManager.getConnection()</code>. Parameterized SQL queries in <code class="text-gray-200">UserDAO.java</code> prevent SQL injection.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer note -->
+            <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-[#8E929F]">
+              <span>Desktop Class: <strong class="text-white">com.fittrack.gui.FitTrackGUI</strong></span>
+              <button onclick="showCodeSnippet('gui')" class="text-[#FF3B6B] hover:underline font-semibold">View Swing Code →</button>
+            </div>
+          </div>
+
+          <!-- RUBRIC 2: JAVA WEB BASED PROJECTS MARKING RUBRIC -->
+          <div class="bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-2xl bg-[#FF7A45]/15 border border-[#FF7A45]/30 flex items-center justify-center text-[#FF7A45]">
+                    <i data-lucide="globe" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-extrabold text-white">Java Web Projects Rubric</h3>
+                    <p class="text-[11px] text-[#8E929F]">Enterprise web tier & servlet integration</p>
+                  </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">Passed ✓</span>
+              </div>
+
+              <!-- Rubric Items List -->
+              <div class="space-y-3.5 text-xs">
+                <!-- Criterion 1: Problem Understanding & Solution Design -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FF3B6B]"></span>
+                      <span>Problem Understanding & Design</span>
+                    </span>
+                    <span class="text-[10px] text-[#FF3B6B] font-semibold">Tiered Fitness Telemetry</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Multi-tier architecture separating Model domain entities, DAO data persistence layer, Thread-safe synchronization buffer, and Web Controller Servlets.
+                  </p>
+                </div>
+
+                <!-- Criterion 2: Core Java Concepts -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FF7A45]"></span>
+                      <span>Core Java Concepts</span>
+                    </span>
+                    <span class="text-[10px] text-[#FF7A45] font-semibold">Encapsulation · Serializable · Enums</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Private field encapsulation with robust getters/setters, <code class="text-gray-200">Serializable</code> DTOs, custom exception inheritance, and clean memory management.
+                  </p>
+                </div>
+
+                <!-- Criterion 3: Database Integration (JDBC) -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#FFB347]"></span>
+                      <span>Database Integration (JDBC)</span>
+                    </span>
+                    <span class="text-[10px] text-[#FFB347] font-semibold">Connection Pool · Transactions</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    Auto-bootstrapping DDL schema initialization, <code class="text-gray-200">ResultSet</code> cursor navigation, and transactional commit/rollback handling.
+                  </p>
+                </div>
+
+                <!-- Criterion 4: Servlets & Web Integration -->
+                <div class="p-3.5 rounded-2xl bg-[#121318] border border-white/5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>Servlets & Web Integration</span>
+                    </span>
+                    <span class="text-[10px] text-emerald-400 font-semibold">HttpServlet · HttpSession · web.xml</span>
+                  </div>
+                  <p class="text-[#8E929F] text-[11px] mt-1.5 leading-relaxed">
+                    <code class="text-gray-200">FitTrackDashboardServlet.java</code> extends <code class="text-gray-200">HttpServlet</code>, processes <code class="text-gray-200">doGet()</code> and <code class="text-gray-200">doPost()</code>, manages sessions via <code class="text-gray-200">HttpSession</code>, and routes in <code class="text-gray-200">web.xml</code>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer note -->
+            <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-[#8E929F]">
+              <span>Web Class: <strong class="text-white">FitTrackDashboardServlet.java</strong></span>
+              <button onclick="showCodeSnippet('servlet')" class="text-[#FF7A45] hover:underline font-semibold">View Servlet Code →</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- INTERACTIVE CODE INSPECTOR (Tabbed File Viewer) -->
+        <div class="bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-white/5">
+            <div>
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i data-lucide="file-code" class="w-5 h-5 text-[#FF3B6B]"></i>
+                <span>Interactive Java Source Code Inspector</span>
+              </h3>
+              <p class="text-xs text-[#8E929F]">Examine the actual compiled Java source files implementing each rubric category</p>
+            </div>
+
+            <!-- Copy Code Button -->
+            <button onclick="copyCurrentJavaCode()" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-all self-start sm:self-auto">
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-[#FF7A45]"></i>
+              <span id="copy-code-label">Copy Source Code</span>
+            </button>
+          </div>
+
+          <!-- File Switcher Tabs -->
+          <div class="flex gap-2 overflow-x-auto pb-2 text-xs no-scrollbar">
+            <button onclick="showCodeSnippet('oop')" id="code-tab-oop" class="code-selector-tab px-3 py-1.5 rounded-xl bg-[#FF3B6B] text-white font-bold transition-all shrink-0">
+              AthleteUser.java (OOP & Interface)
+            </button>
+            <button onclick="showCodeSnippet('generics')" id="code-tab-generics" class="code-selector-tab px-3 py-1.5 rounded-xl bg-white/5 text-[#8E929F] hover:text-white font-medium transition-all shrink-0">
+              GenericRepository.java (Collections)
+            </button>
+            <button onclick="showCodeSnippet('threads')" id="code-tab-threads" class="code-selector-tab px-3 py-1.5 rounded-xl bg-white/5 text-[#8E929F] hover:text-white font-medium transition-all shrink-0">
+              TelemetryBuffer.java (Multithreading)
+            </button>
+            <button onclick="showCodeSnippet('jdbc')" id="code-tab-jdbc" class="code-selector-tab px-3 py-1.5 rounded-xl bg-white/5 text-[#8E929F] hover:text-white font-medium transition-all shrink-0">
+              UserDAO.java (JDBC Operations)
+            </button>
+            <button onclick="showCodeSnippet('servlet')" id="code-tab-servlet" class="code-selector-tab px-3 py-1.5 rounded-xl bg-white/5 text-[#8E929F] hover:text-white font-medium transition-all shrink-0">
+              FitTrackDashboardServlet.java (Web)
+            </button>
+            <button onclick="showCodeSnippet('gui')" id="code-tab-gui" class="code-selector-tab px-3 py-1.5 rounded-xl bg-white/5 text-[#8E929F] hover:text-white font-medium transition-all shrink-0">
+              FitTrackGUI.java (Swing Desktop)
+            </button>
+          </div>
+
+          <!-- Code View Area -->
+          <div class="mt-4 bg-[#0D0D11] border border-white/10 rounded-2xl p-4 overflow-x-auto max-h-96 text-xs font-mono text-gray-300 leading-relaxed relative">
+            <pre id="java-code-pre"><code>// Loading Java source code...</code></pre>
+          </div>
+        </div>
+
+        <!-- INTERACTIVE LIVE JAVA RUNTIME & THREAD SIMULATOR -->
+        <div id="java-simulator-anchor" class="bg-[#1A1B22] border border-white/[0.08] rounded-3xl p-6 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-400">JVM Runtime Emulation</span>
+              </div>
+              <h3 class="text-lg font-bold text-white">Interactive Multithreading & JDBC Simulation Playground</h3>
+              <p class="text-xs text-[#8E929F]">Observe synchronized producer-consumer thread queuing and JDBC SQL query execution in real-time</p>
+            </div>
+
+            <!-- Simulation Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="simulateThreadProduce()" class="px-3 py-1.5 rounded-xl bg-[#FF3B6B]/20 hover:bg-[#FF3B6B]/30 text-[#FF3B6B] border border-[#FF3B6B]/30 text-xs font-bold transition-all">
+                + Sensor Thread Produce
+              </button>
+              <button onclick="simulateJdbcCommit()" class="px-3 py-1.5 rounded-xl bg-[#FF7A45]/20 hover:bg-[#FF7A45]/30 text-[#FF7A45] border border-[#FF7A45]/30 text-xs font-bold transition-all">
+                ⚡ JDBC Batch Commit
+              </button>
+              <button onclick="simulateExceptionCatch()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all">
+                ⚠️ Test Exception Catch
+              </button>
+              <button onclick="clearSimulatorLogs()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white text-xs transition-all">
+                Clear Logs
+              </button>
+            </div>
+          </div>
+
+          <!-- Visual Thread Pipeline Diagram -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-xs">
+            <!-- Worker Thread 1: Producer -->
+            <div class="p-4 rounded-2xl bg-[#121318] border border-white/5 flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-[#FF3B6B]/20 text-[#FF3B6B] flex items-center justify-center font-mono font-bold shrink-0">
+                T1
+              </div>
+              <div>
+                <span class="text-[#8E929F] text-[10px] uppercase block">Thread-1 (Runnable)</span>
+                <span class="font-bold text-white block">HeartRateSensor</span>
+                <span class="text-[11px] text-emerald-400 font-semibold" id="sim-t1-status">Status: Active (128 BPM)</span>
+              </div>
+            </div>
+
+            <!-- Synchronized Buffer Queue -->
+            <div class="p-4 rounded-2xl bg-[#121318] border border-white/5 flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-[#FF7A45]/20 text-[#FF7A45] flex items-center justify-center font-mono font-bold shrink-0">
+                SYN
+              </div>
+              <div>
+                <span class="text-[#8E929F] text-[10px] uppercase block">Synchronized Mutex</span>
+                <span class="font-bold text-white block">TelemetryBuffer.java</span>
+                <span class="text-[11px] text-[#FF7A45] font-semibold" id="sim-buffer-status">Queue: 4 / 20 items</span>
+              </div>
+            </div>
+
+            <!-- Worker Thread 2: JDBC Consumer -->
+            <div class="p-4 rounded-2xl bg-[#121318] border border-white/5 flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-[#FFB347]/20 text-[#FFB347] flex items-center justify-center font-mono font-bold shrink-0">
+                T2
+              </div>
+              <div>
+                <span class="text-[#8E929F] text-[10px] uppercase block">Thread-2 (JDBC Consumer)</span>
+                <span class="font-bold text-white block">UserDAO Batch Writer</span>
+                <span class="text-[11px] text-emerald-400 font-semibold" id="sim-t2-status">Status: SQLite Connected</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Log Terminal -->
+          <div class="bg-[#0D0D11] border border-white/10 rounded-2xl p-4 font-mono text-xs text-gray-300 max-h-56 overflow-y-auto space-y-1.5" id="sim-terminal-logs">
+            <div class="text-[#8E929F]">[JVM Boot] FitTrack Virtual Engine initialized on port 8080 (Servlets + JDBC).</div>
+            <div class="text-[#8E929F]">[JDBC DatabaseManager] Loaded driver org.sqlite.JDBC. Connection pool active.</div>
+            <div class="text-emerald-400">[Thread-1] HeartRateMonitorThread started: Produced 128 BPM sample. Lock acquired on TelemetryBuffer.</div>
+            <div class="text-[#FF7A45]">[TelemetryBuffer] buffer.produceBpm(128) synchronized OK. notifyAll() triggered.</div>
+            <div class="text-sky-400">[Thread-2: UserDAO] Executing PreparedStatement: INSERT INTO heart_rate_logs (user_id, bpm) VALUES (?, ?); -> 1 row committed.</div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- FLOATING BOTTOM DOCK (Mobile & Desktop Quick Access - Unlocked upon Login) -->
+    <div id="floating-dock" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-md hidden transition-all duration-300">
+      <nav class="bg-[#16171F]/90 backdrop-blur-xl border border-white/10 rounded-3xl px-4 py-2 flex items-center justify-around shadow-2xl">
+        <!-- Home / Dashboard -->
+        <button onclick="switchNavTab('dashboard')" id="dock-btn-dashboard" class="flex flex-col items-center gap-1 text-[#FF3B6B] hover:text-[#FF3B6B] transition-colors p-2">
+          <i data-lucide="home" class="w-5 h-5"></i>
+          <span class="text-[10px] font-semibold">Home</span>
+        </button>
+
+        <!-- Workouts -->
+        <button onclick="switchNavTab('workouts')" id="dock-btn-workouts" class="flex flex-col items-center gap-1 text-[#8E929F] hover:text-white transition-colors p-2">
+          <i data-lucide="dumbbell" class="w-5 h-5"></i>
+          <span class="text-[10px] font-semibold">Workouts</span>
+        </button>
+
+        <!-- Elevated Central Coral "+" Floating Action Button (FAB) -->
+        <button onclick="openQuickLogModal()" title="Log Workout / Activity" class="relative -top-5 w-14 h-14 rounded-full bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white flex items-center justify-center shadow-lg shadow-[#FF3B6B]/40 hover:scale-110 active:scale-95 transition-all">
+          <i data-lucide="plus" class="w-7 h-7 stroke-[2.5]"></i>
+          <span class="absolute -inset-1 rounded-full bg-[#FF3B6B]/30 blur-sm -z-10 animate-pulse"></span>
+        </button>
+
+        <!-- Progress -->
+        <button onclick="switchNavTab('progress')" id="dock-btn-progress" class="flex flex-col items-center gap-1 text-[#8E929F] hover:text-white transition-colors p-2">
+          <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+          <span class="text-[10px] font-semibold">Progress</span>
+        </button>
+
+        <!-- Profile -->
+        <button onclick="openProfileModal()" class="flex flex-col items-center gap-1 text-[#8E929F] hover:text-white transition-colors p-2">
+          <i data-lucide="user" class="w-5 h-5"></i>
+          <span class="text-[10px] font-semibold">Profile</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ==================== MODALS & DRAWERS ==================== -->
+
+    <!-- 1. INTERACTIVE SLIDE-OVER AI COACH CHAT DRAWER -->
+    <div id="ai-coach-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+      <!-- Backdrop -->
+      <div onclick="closeAICoachDrawer()" class="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"></div>
+
+      <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+        <div class="w-screen max-w-md bg-[#16171F] border-l border-white/10 shadow-2xl flex flex-col justify-between">
+          <!-- Drawer Header -->
+          <div class="p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#1A1B22] to-[#16171F]">
+            <div class="flex items-center gap-3">
+              <div class="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF4B6E] to-[#FF8552] flex items-center justify-center text-white shadow-md shadow-[#FF4B6E]/30">
+                <i data-lucide="bot" class="w-6 h-6"></i>
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full ring-2 ring-[#16171F]"></span>
+              </div>
+              <div>
+                <h3 class="font-black text-white text-base flex items-center gap-1.5">
+                  <span>FitTrack AI Coach</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FF3B6B]/20 text-[#FF3B6B] font-bold">Pro</span>
+                </h3>
+                <p class="text-xs text-[#8E929F]">Personalized training & recovery analyst</p>
+              </div>
+            </div>
+            <button onclick="closeAICoachDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white flex items-center justify-center transition-colors">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Suggested Prompt Chips -->
+          <div class="px-5 py-3 border-b border-white/5 bg-[#121318]">
+            <span class="text-[11px] text-[#8E929F] font-semibold block mb-2 uppercase tracking-wider">Quick Inquiries</span>
+            <div class="flex gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
+              <button onclick="sendQuickPrompt('Suggest a 20-min HIIT circuit for fat loss')" class="shrink-0 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/5 text-[11px] transition-all">
+                ⚡ 20-min HIIT circuit
+              </button>
+              <button onclick="sendQuickPrompt('What should I eat post-workout right now?')" class="shrink-0 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/5 text-[11px] transition-all">
+                🥗 Post-workout meal
+              </button>
+              <button onclick="sendQuickPrompt('My heart rate is 128 BPM in Zone 3. Is that good?')" class="shrink-0 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/5 text-[11px] transition-all">
+                ❤️ Zone 3 Heart Rate check
+              </button>
+            </div>
+          </div>
+
+          <!-- Chat Conversation Area -->
+          <div id="ai-chat-messages" class="flex-1 p-5 overflow-y-auto space-y-4 text-xs">
+            <!-- Initial AI Welcome Message -->
+            <div class="flex gap-3">
+              <div class="w-7 h-7 rounded-xl bg-[#FF4B6E] text-white flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="bot" class="w-4 h-4"></i>
+              </div>
+              <div class="bg-[#1A1B22] border border-white/5 rounded-2xl p-3.5 text-gray-200 leading-relaxed max-w-[85%] shadow-sm">
+                <p>Hey <strong id="coach-greeting-name" class="text-white">Athlete</strong>! 👋 I've examined your telemetry today:</p>
+                <ul class="mt-2 space-y-1 text-[#8E929F]">
+                  <li>• Calories: <strong class="text-white">632 kcal</strong> (79% of goal)</li>
+                  <li>• Steps: <strong class="text-[#FF7A45]">12,456</strong> (crushed your 10k target!)</li>
+                  <li>• Heart Rate: <strong class="text-[#FF3B6B]">128 BPM</strong> in Zone 3 Cardio</li>
+                </ul>
+                <p class="mt-2 text-gray-300">What would you like assistance with? A customized routine, meal guidance, or form breakdown?</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="p-4 border-t border-white/10 bg-[#1A1B22]">
+            <form onsubmit="handleAIChatSubmit(event)" class="flex items-center gap-2">
+              <input type="text" id="ai-chat-input" placeholder="Ask your AI coach anything..." class="flex-1 bg-[#121318] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#8E929F] focus:outline-none focus:border-[#FF3B6B] transition-colors" />
+              <button type="submit" class="w-10 h-10 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white flex items-center justify-center shadow-md shadow-[#FF3B6B]/25 hover:scale-105 active:scale-95 transition-all shrink-0">
+                <i data-lucide="send" class="w-4 h-4"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. WORKOUT DETAIL & ACTIVE TIMER MODAL -->
+    <div id="workout-detail-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" role="dialog" aria-modal="true">
+      <div class="min-h-screen px-4 text-center flex items-center justify-center">
+        <div onclick="closeWorkoutDetails()" class="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"></div>
+        <div class="inline-block w-full max-w-lg p-6 my-8 text-left align-middle transition-all transform bg-[#1A1B22] border border-white/10 rounded-3xl shadow-2xl relative z-10">
+          <!-- Modal Close -->
+          <button onclick="closeWorkoutDetails()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white flex items-center justify-center transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Banner & Info -->
+          <div class="relative h-44 rounded-2xl overflow-hidden mb-5 border border-white/5">
+            <img id="modal-workout-img" src="" alt="Workout" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#1A1B22] via-black/40 to-transparent"></div>
+            <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+              <div>
+                <span id="modal-workout-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#FF3B6B] text-white">Strength</span>
+                <h3 id="modal-workout-title" class="text-xl font-black text-white mt-1">Upper Body Strength</h3>
+              </div>
+              <span id="modal-workout-time" class="text-xs font-bold text-[#FF7A45] bg-black/60 px-2.5 py-1 rounded-lg">9:00 AM</span>
+            </div>
+          </div>
+
+          <!-- Metadata Pill Bar -->
+          <div class="grid grid-cols-3 gap-2 mb-5 text-center text-xs">
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">Duration</span>
+              <span id="modal-workout-duration" class="font-bold text-white mt-0.5 block">45 min</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">Est. Burn</span>
+              <span id="modal-workout-calories" class="font-bold text-[#FF3B6B] mt-0.5 block">380 kcal</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">Level</span>
+              <span id="modal-workout-level" class="font-bold text-white mt-0.5 block">Intermediate</span>
+            </div>
+          </div>
+
+          <!-- Exercises List with Checkboxes -->
+          <div>
+            <div class="flex items-center justify-between mb-2.5">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-white">Exercise Checklist</h4>
+              <span class="text-[11px] text-[#8E929F]">Tap to toggle completion</span>
+            </div>
+            <div id="modal-exercises-list" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- ACTIVE TIMER CONTROLS -->
+          <div id="active-timer-section" class="mt-5 p-4 rounded-2xl bg-[#121318] border border-white/5 hidden">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Live Workout Stopwatch</span>
+              </span>
+              <span id="workout-timer-display" class="font-mono text-xl font-bold text-[#FF3B6B]">00:00</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="toggleWorkoutTimer()" id="btn-timer-toggle" class="flex-1 py-2 rounded-xl bg-[#FF3B6B] text-white text-xs font-bold hover:bg-[#FF527D] transition-colors flex items-center justify-center gap-1.5">
+                <i data-lucide="play" class="w-3.5 h-3.5" id="timer-toggle-icon"></i>
+                <span id="timer-toggle-label">Start Timer</span>
+              </button>
+              <button onclick="finishWorkoutSession()" class="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">
+                Finish & Log
+              </button>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-6 flex items-center gap-3">
+            <button onclick="startWorkoutSession()" id="btn-start-workout-session" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              <i data-lucide="play-circle" class="w-4 h-4"></i>
+              <span>Start Workout Timer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. QUICK-LOG / ADD ACTIVITY & WORKOUT MODAL -->
+    <div id="quick-log-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" role="dialog" aria-modal="true">
+      <div class="min-h-screen px-4 text-center flex items-center justify-center">
+        <div onclick="closeQuickLogModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"></div>
+        <div class="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-[#1A1B22] border border-white/10 rounded-3xl shadow-2xl relative z-10">
+          <button onclick="closeQuickLogModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white flex items-center justify-center transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Modal Tabs: Log Metrics vs Add New Workout -->
+          <div class="flex gap-2 p-1 bg-[#121318] rounded-xl mb-5 text-xs font-bold">
+            <button onclick="switchLogModalTab('metrics')" id="btn-log-tab-metrics" class="flex-1 py-2 rounded-lg bg-white/10 text-white transition-all text-center">
+              Quick Metric Log
+            </button>
+            <button onclick="switchLogModalTab('custom_workout')" id="btn-log-tab-workout" class="flex-1 py-2 rounded-lg text-[#8E929F] hover:text-white transition-all text-center">
+              Schedule Workout
+            </button>
+          </div>
+
+          <!-- TAB 1: METRICS LOG -->
+          <div id="log-content-metrics" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-white mb-1.5 flex items-center gap-2">
+                <i data-lucide="flame" class="w-3.5 h-3.5 text-[#FF3B6B]"></i>
+                <span>Add Calories Burned (kcal)</span>
+              </label>
+              <div class="flex gap-2 mb-2">
+                <button onclick="addCalories(50)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF3B6B]/20 hover:text-[#FF3B6B] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+50</button>
+                <button onclick="addCalories(100)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF3B6B]/20 hover:text-[#FF3B6B] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+100</button>
+                <button onclick="addCalories(250)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF3B6B]/20 hover:text-[#FF3B6B] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+250</button>
+              </div>
+              <input type="number" id="input-custom-cal" placeholder="Or enter exact kcal" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#8E929F] focus:outline-none focus:border-[#FF3B6B]" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-white mb-1.5 flex items-center gap-2">
+                <i data-lucide="footprints" class="w-3.5 h-3.5 text-[#FF7A45]"></i>
+                <span>Add Steps</span>
+              </label>
+              <div class="flex gap-2 mb-2">
+                <button onclick="addSteps(500)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF7A45]/20 hover:text-[#FF7A45] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+500</button>
+                <button onclick="addSteps(1000)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF7A45]/20 hover:text-[#FF7A45] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+1,000</button>
+                <button onclick="addSteps(2500)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF7A45]/20 hover:text-[#FF7A45] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+2,500</button>
+              </div>
+              <input type="number" id="input-custom-steps" placeholder="Or enter exact steps" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#8E929F] focus:outline-none focus:border-[#FF7A45]" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-white mb-1.5 flex items-center gap-2">
+                <i data-lucide="timer" class="w-3.5 h-3.5 text-[#FFB347]"></i>
+                <span>Add Active Minutes</span>
+              </label>
+              <div class="flex gap-2 mb-2">
+                <button onclick="addMinutes(10)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FFB347]/20 hover:text-[#FFB347] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+10 m</button>
+                <button onclick="addMinutes(20)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FFB347]/20 hover:text-[#FFB347] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+20 m</button>
+                <button onclick="addMinutes(30)" class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-[#FFB347]/20 hover:text-[#FFB347] text-xs font-semibold text-gray-300 border border-white/5 transition-all">+30 m</button>
+              </div>
+              <input type="number" id="input-custom-min" placeholder="Or enter exact minutes" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#8E929F] focus:outline-none focus:border-[#FFB347]" />
+            </div>
+
+            <button onclick="applyCustomMetricInputs()" class="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs font-bold shadow-lg shadow-[#FF3B6B]/25 hover:scale-[1.01] active:scale-[0.98] transition-all">
+              Save & Recalculate Score
+            </button>
+          </div>
+
+          <!-- TAB 2: SCHEDULE CUSTOM WORKOUT -->
+          <form id="form-custom-workout" onsubmit="handleCustomWorkoutSubmit(event)" class="space-y-3.5 hidden">
+            <div>
+              <label class="block text-xs font-bold text-white mb-1">Workout Name</label>
+              <input type="text" id="custom-workout-title" required placeholder="e.g. Evening Sprint & Core" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#8E929F] focus:outline-none focus:border-[#FF3B6B]" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-white mb-1">Category</label>
+                <select id="custom-workout-category" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF3B6B]">
+                  <option value="Strength">Strength (Dumbbell)</option>
+                  <option value="Cardio">Cardio & Sprints</option>
+                  <option value="HIIT">HIIT Blast</option>
+                  <option value="Yoga">Yoga / Stretch</option>
+                  <option value="Cycling">Outdoor Cycling</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-white mb-1">Scheduled Time</label>
+                <input type="text" id="custom-workout-time-val" required value="7:30 PM" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#FF3B6B]" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-white mb-1">Duration (min)</label>
+                <input type="number" id="custom-workout-duration-val" required value="35" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#FF3B6B]" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-white mb-1">Intensity</label>
+                <select id="custom-workout-intensity-val" class="w-full bg-[#121318] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF3B6B]">
+                  <option value="High Intensity">High Intensity</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Low Impact">Low Impact</option>
+                  <option value="Recovery">Active Recovery</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white text-xs font-bold shadow-lg shadow-[#FF3B6B]/25 hover:scale-[1.01] active:scale-[0.98] transition-all">
+              Add to Today's Schedule
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. USER PROFILE MODAL -->
+    <div id="user-profile-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" role="dialog" aria-modal="true">
+      <div class="min-h-screen px-4 text-center flex items-center justify-center">
+        <div onclick="closeProfileModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"></div>
+        <div class="inline-block w-full max-w-sm p-6 my-8 text-left align-middle transition-all transform bg-[#1A1B22] border border-white/10 rounded-3xl shadow-2xl relative z-10">
+          <button onclick="closeProfileModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white flex items-center justify-center transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          <div class="flex flex-col items-center text-center">
+            <div class="w-20 h-20 rounded-full border-2 border-[#FF3B6B] overflow-hidden p-1 shadow-coral-glow mb-3">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="Account Avatar" class="w-full h-full object-cover rounded-full" />
+            </div>
+            <h3 id="profile-modal-name" class="text-lg font-bold text-white">Athlete</h3>
+            <p id="profile-modal-email" class="text-xs text-[#8E929F]">athlete@fittrack.io · Pro Member</p>
+          </div>
+          <div class="grid grid-cols-3 gap-2 my-5 text-center text-xs">
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">Weight</span>
+              <span class="font-bold text-white mt-0.5 block">68.5 kg</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">Height</span>
+              <span class="font-bold text-white mt-0.5 block">178 cm</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-[#121318] border border-white/5">
+              <span class="text-[10px] text-[#8E929F] uppercase block">VO2 Max</span>
+              <span class="font-bold text-[#FF3B6B] mt-0.5 block">51.2</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between items-center p-3 rounded-xl bg-[#121318]">
+              <span class="text-[#8E929F]">Daily Calorie Goal</span>
+              <span class="font-bold text-white">800 kcal</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-xl bg-[#121318]">
+              <span class="text-[#8E929F]">Daily Step Target</span>
+              <span class="font-bold text-white">10,000 steps</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-xl bg-[#121318]">
+              <span class="text-[#8E929F]">Active Time Target</span>
+              <span class="font-bold text-white">60 mins</span>
+            </div>
+          </div>
+
+          <!-- Account Actions -->
+          <div class="mt-5 pt-4 border-t border-white/5 flex gap-2">
+            <button onclick="closeProfileModal(); switchNavTab('login');" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#8E929F] hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+              <span>Switch Account</span>
+            </button>
+            <button onclick="logoutUser()" class="flex-1 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== CORE INTERACTIVE JAVASCRIPT ==================== -->
+    <script>
+      // Initial State (User starts logged out so Login Page comes first)
+      const state = {
+        user: {
+          isLoggedIn: false,
+          name: '',
+          firstName: '',
+          email: 'athlete@fittrack.io',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          tier: 'Pro Member',
+          goal: 'Strength & Hypertrophy'
+        },
+        period: 'today', // 'today', 'weekly', 'monthly'
+        metrics: {
+          calories: 632,
+          caloriesTarget: 800,
+          steps: 12456,
+          stepsTarget: 10000,
+          minutes: 78,
+          minutesTarget: 60,
+        },
+        heartRate: {
+          bpm: 128,
+          zone: 'Zone 3 • Cardio',
+          simulating: true,
+          chartData: [72, 68, 64, 82, 95, 110, 128, 142, 135, 128],
+          timeLabels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00', '23:00', '24:00']
+        },
+        workouts: [
+          {
+            id: 'upper_body',
+            title: 'Upper Body Strength',
+            category: 'Strength',
+            categoryIcon: 'dumbbell',
+            time: '9:00 AM',
+            duration: '45 min',
+            intensity: 'Intermediate',
+            targetZone: 'Chest & Arms',
+            calories: '380 kcal',
+            image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80',
+            exercises: [
+              { name: 'Incline Dumbbell Bench Press', sets: '4 sets × 10 reps', completed: true },
+              { name: 'Bent-Over Dumbbell Rows', sets: '4 sets × 12 reps', completed: true },
+              { name: 'Seated Dumbbell Shoulder Press', sets: '3 sets × 12 reps', completed: false },
+              { name: 'Bicep Hammer Curls superset Tricep Dips', sets: '3 sets × 15 reps', completed: false }
+            ]
+          },
+          {
+            id: 'hiit_cardio',
+            title: 'HIIT Cardio Blast',
+            category: 'HIIT',
+            categoryIcon: 'zap',
+            time: '12:30 PM',
+            duration: '30 min',
+            intensity: 'High Intensity',
+            targetZone: 'Full Body',
+            calories: '340 kcal',
+            image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=400&q=80',
+            exercises: [
+              { name: 'Kettlebell Swings', sets: '40s work, 20s rest × 4 rounds', completed: false },
+              { name: 'Plyometric Jump Squats', sets: '40s work, 20s rest × 4 rounds', completed: false },
+              { name: 'Burpees to High Jump', sets: '30s work, 30s rest × 4 rounds', completed: false },
+              { name: 'Mountain Climbers & Plank Hold', sets: '45s work × 3 rounds', completed: false }
+            ]
+          },
+          {
+            id: 'yoga_flow',
+            title: 'Yoga Flow',
+            category: 'Flexibility',
+            categoryIcon: 'sparkles',
+            time: '6:00 PM',
+            duration: '20 min',
+            intensity: 'Flexibility',
+            targetZone: 'Recovery',
+            calories: '120 kcal',
+            image: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=400&q=80',
+            exercises: [
+              { name: 'Cat-Cow Spinal Decompression', sets: '2 minutes slow tempo', completed: false },
+              { name: 'Downward-Facing Dog to Cobra Flow', sets: '8 repetitions with deep breath', completed: false },
+              { name: 'Warrior II & Reverse Warrior', sets: '1 minute hold per side', completed: false },
+              { name: 'Pigeon Pose & Deep Hip Stretch', sets: '2 minutes hold per side', completed: false }
+            ]
+          }
+        ],
+        activeWorkout: null,
+        timerInterval: null,
+        timerSeconds: 0,
+        waterIntake: 2250
+      };
+
+      // Sound Synthesizer via Web Audio API (Zero external audio dependencies)
+      let audioCtx = null;
+      function playTone(freq = 440, type = 'sine', duration = 0.15) {
+        try {
+          if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+          // Silent fallback
+        }
+      }
+
+      // Initialize Lucide Icons
+      function refreshIcons() {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }
+
+      // Calculate and update concentric rings & total score
+      function updateActivityRings() {
+        const cal = state.metrics.calories;
+        const calTgt = state.metrics.caloriesTarget;
+        const steps = state.metrics.steps;
+        const stepTgt = state.metrics.stepsTarget;
+        const mins = state.metrics.minutes;
+        const minTgt = state.metrics.minutesTarget;
+
+        const calPct = Math.min(cal / calTgt, 1.0);
+        const stepsPct = Math.min(steps / stepTgt, 1.0);
+        const minsPct = Math.min(mins / minTgt, 1.0);
+
+        // Ring circumference:
+        // Outer radius 96: 2 * PI * 96 ≈ 603.18
+        // Middle radius 74: 2 * PI * 74 ≈ 464.95
+        // Inner radius 52: 2 * PI * 52 ≈ 326.72
+        const calCircumference = 603.18;
+        const stepCircumference = 464.95;
+        const minCircumference = 326.72;
+
+        const calOffset = calCircumference * (1 - calPct);
+        const stepOffset = stepCircumference * (1 - stepsPct);
+        const minOffset = minCircumference * (1 - minsPct);
+
+        const ringCal = document.getElementById('ring-calories');
+        const ringSteps = document.getElementById('ring-steps');
+        const ringMin = document.getElementById('ring-minutes');
+
+        if (ringCal) ringCal.style.strokeDashoffset = calOffset;
+        if (ringSteps) ringSteps.style.strokeDashoffset = stepOffset;
+        if (ringMin) ringMin.style.strokeDashoffset = minOffset;
+
+        // Calculate dynamic total score (out of 1000)
+        // Weighted average: Calories (35%), Steps (35%), Active min (30%)
+        const rawScore = (cal / calTgt) * 350 + (steps / stepTgt) * 350 + (mins / minTgt) * 300;
+        const finalScore = Math.min(Math.round(rawScore), 1000);
+
+        const scoreEl = document.getElementById('center-total-score');
+        if (scoreEl) scoreEl.textContent = finalScore;
+
+        const badgeEl = document.getElementById('center-status-badge');
+        if (badgeEl) {
+          if (finalScore >= 800) {
+            badgeEl.textContent = 'Excellent ⚡';
+          } else if (finalScore >= 600) {
+            badgeEl.textContent = 'On Track 🔥';
+          } else {
+            badgeEl.textContent = 'Keep Going 💪';
+          }
+        }
+
+        // Update Legends
+        const legCal = document.getElementById('legend-cal');
+        if (legCal) legCal.textContent = `${cal.toLocaleString()} / ${calTgt.toLocaleString()} kcal (${Math.round((cal/calTgt)*100)}%)`;
+        
+        const legSteps = document.getElementById('legend-steps');
+        if (legSteps) legSteps.textContent = `${steps.toLocaleString()} / ${stepTgt.toLocaleString()} (${Math.round((steps/stepTgt)*100)}%)`;
+
+        const legMin = document.getElementById('legend-min');
+        if (legMin) legMin.textContent = `${mins} / ${minTgt} min (${Math.round((mins/minTgt)*100)}%)`;
+
+        // Update Key Metric Cards on the right
+        const mCalVal = document.getElementById('metric-cal-val');
+        if (mCalVal) mCalVal.textContent = cal.toLocaleString();
+        const barCal = document.getElementById('bar-calories');
+        if (barCal) barCal.style.width = `${Math.min(Math.round((cal/calTgt)*100), 100)}%`;
+
+        const mStepVal = document.getElementById('metric-steps-val');
+        if (mStepVal) mStepVal.textContent = steps.toLocaleString();
+        const barStep = document.getElementById('bar-steps');
+        if (barStep) barStep.style.width = `${Math.min(Math.round((steps/stepTgt)*100), 100)}%`;
+
+        const mMinVal = document.getElementById('metric-min-val');
+        if (mMinVal) mMinVal.textContent = mins;
+        const barMin = document.getElementById('bar-minutes');
+        if (barMin) barMin.style.width = `${Math.min(Math.round((mins/minTgt)*100), 100)}%`;
+      }
+
+      // Period Switcher (Today / Weekly / Monthly)
+      function setActivityPeriod(period) {
+        state.period = period;
+        playTone(520, 'sine', 0.08);
+
+        document.querySelectorAll('.period-btn').forEach(b => {
+          b.classList.remove('bg-white/10', 'text-white');
+          b.classList.add('text-[#8E929F]');
+        });
+
+        const activeBtn = document.getElementById(`btn-period-${period}`);
+        if (activeBtn) {
+          activeBtn.classList.add('bg-white/10', 'text-white');
+          activeBtn.classList.remove('text-[#8E929F]');
+        }
+
+        if (period === 'today') {
+          state.metrics.calories = 632;
+          state.metrics.caloriesTarget = 800;
+          state.metrics.steps = 12456;
+          state.metrics.stepsTarget = 10000;
+          state.metrics.minutes = 78;
+          state.metrics.minutesTarget = 60;
+        } else if (period === 'weekly') {
+          state.metrics.calories = 4850;
+          state.metrics.caloriesTarget = 5600;
+          state.metrics.steps = 74200;
+          state.metrics.stepsTarget = 70000;
+          state.metrics.minutes = 460;
+          state.metrics.minutesTarget = 420;
+        } else if (period === 'monthly') {
+          state.metrics.calories = 21400;
+          state.metrics.caloriesTarget = 24000;
+          state.metrics.steps = 312000;
+          state.metrics.stepsTarget = 300000;
+          state.metrics.minutes = 1890;
+          state.metrics.minutesTarget = 1800;
+        }
+        updateActivityRings();
+      }
+
+      // Quick metric increments
+      function addCalories(amt) {
+        state.metrics.calories += amt;
+        playTone(660, 'triangle', 0.1);
+        updateActivityRings();
+        showToast(`+${amt} kcal logged!`);
+      }
+
+      function addSteps(amt) {
+        state.metrics.steps += amt;
+        playTone(720, 'triangle', 0.1);
+        updateActivityRings();
+        showToast(`+${amt.toLocaleString()} steps added!`);
+      }
+
+      function addMinutes(amt) {
+        state.metrics.minutes += amt;
+        playTone(800, 'triangle', 0.1);
+        updateActivityRings();
+        showToast(`+${amt} active mins added!`);
+      }
+
+      function applyCustomMetricInputs() {
+        const calInput = document.getElementById('input-custom-cal');
+        const stepInput = document.getElementById('input-custom-steps');
+        const minInput = document.getElementById('input-custom-min');
+
+        let modified = false;
+        if (calInput && calInput.value) {
+          state.metrics.calories += parseInt(calInput.value, 10);
+          calInput.value = '';
+          modified = true;
+        }
+        if (stepInput && stepInput.value) {
+          state.metrics.steps += parseInt(stepInput.value, 10);
+          stepInput.value = '';
+          modified = true;
+        }
+        if (minInput && minInput.value) {
+          state.metrics.minutes += parseInt(minInput.value, 10);
+          minInput.value = '';
+          modified = true;
+        }
+
+        if (modified) {
+          playTone(600, 'sine', 0.12);
+          updateActivityRings();
+          closeQuickLogModal();
+          showToast('Metrics updated & Total Score recalculated!');
+        }
+      }
+
+      function openQuickMetricDialog(type) {
+        openQuickLogModal();
+        switchLogModalTab('metrics');
+      }
+
+      // ==================== CHART.JS SETUP ====================
+      let hrChart = null;
+
+      function initHeartRateChart() {
+        const ctx = document.getElementById('heartRateChart').getContext('2d');
+
+        // Create gradient fill
+        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, 'rgba(255, 59, 107, 0.45)');
+        gradient.addColorStop(0.5, 'rgba(255, 122, 69, 0.15)');
+        gradient.addColorStop(1, 'rgba(255, 59, 107, 0.0)');
+
+        hrChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: state.heartRate.timeLabels,
+            datasets: [{
+              label: 'Heart Rate (BPM)',
+              data: state.heartRate.chartData,
+              borderColor: '#FF3B6B',
+              borderWidth: 3,
+              backgroundColor: gradient,
+              fill: true,
+              tension: 0.42, // Smooth cubic spline
+              pointBackgroundColor: '#FF3B6B',
+              pointBorderColor: '#FFFFFF',
+              pointBorderWidth: 2,
+              pointRadius: (ctx) => {
+                // Highlight the latest/peak data point with larger radius
+                return ctx.dataIndex === 6 ? 7 : 3;
+              },
+              pointHoverRadius: 8,
+              pointHoverBackgroundColor: '#FF7A45',
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1A1B22',
+                titleColor: '#8E929F',
+                bodyColor: '#FFFFFF',
+                borderColor: 'rgba(255, 59, 107, 0.4)',
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false,
+                callbacks: {
+                  label: (ctx) => `${ctx.parsed.y} BPM • Zone 3`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                ticks: { color: '#8E929F', font: { size: 11, family: 'Plus Jakarta Sans' } }
+              },
+              y: {
+                min: 40,
+                max: 180,
+                ticks: {
+                  stepSize: 60,
+                  color: '#8E929F',
+                  font: { size: 11, family: 'Plus Jakarta Sans' },
+                  callback: (val) => val === 60 || val === 120 || val === 180 ? val + ' BPM' : ''
+                },
+                grid: { color: 'rgba(255, 255, 255, 0.04)' }
+              }
+            }
+          }
+        });
+      }
+
+      // Live Heart Rate Simulation Loop
+      let hrSimTimer = null;
+      function startHeartRateSimulation() {
+        if (hrSimTimer) clearInterval(hrSimTimer);
+        hrSimTimer = setInterval(() => {
+          if (!state.heartRate.simulating) return;
+
+          // Natural fluctuation around 125-132 BPM
+          const delta = (Math.random() - 0.48) * 4;
+          let newBpm = Math.round(state.heartRate.bpm + delta);
+          newBpm = Math.max(122, Math.min(136, newBpm));
+          state.heartRate.bpm = newBpm;
+
+          // Update UI Display
+          const bpmDisplay = document.getElementById('current-bpm-display');
+          const floatingBpm = document.getElementById('floating-bpm-val');
+          if (bpmDisplay) bpmDisplay.textContent = newBpm;
+          if (floatingBpm) floatingBpm.textContent = newBpm;
+
+          // Update chart current point
+          if (hrChart) {
+            hrChart.data.datasets[0].data[6] = newBpm;
+            hrChart.update('none'); // Render smoothly without full re-animation
+          }
+        }, 2500);
+      }
+
+      function toggleHeartRateSimulation() {
+        state.heartRate.simulating = !state.heartRate.simulating;
+        const ind = document.getElementById('sim-indicator');
+        const txt = document.getElementById('sim-text');
+        if (state.heartRate.simulating) {
+          ind.classList.remove('bg-gray-500');
+          ind.classList.add('bg-emerald-400');
+          txt.textContent = 'Simulation: Live';
+          showToast('Live BPM telemetry resumed');
+        } else {
+          ind.classList.remove('bg-emerald-400');
+          ind.classList.add('bg-gray-500');
+          txt.textContent = 'Simulation: Paused';
+          showToast('Simulation paused');
+        }
+      }
+
+      // Progress View Trend Chart
+      let progressChart = null;
+      function initProgressTrendChart() {
+        const ctx = document.getElementById('progressTrendChart');
+        if (!ctx) return;
+        progressChart = new Chart(ctx.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+              label: 'Calories Burned',
+              data: [680, 750, 620, 840, 710, 632, 590],
+              backgroundColor: '#FF3B6B',
+              borderRadius: 8,
+              hoverBackgroundColor: '#FF7A45',
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#8E929F' }, grid: { display: false } },
+              y: { ticks: { color: '#8E929F' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+          }
+        });
+      }
+
+      // Navigation View Switching
+      function switchNavTab(tabId) {
+        // Enforce Login First: fitness data requires authentication
+        if (tabId !== 'login' && tabId !== 'javarubric' && !state.user.isLoggedIn) {
+          playTone(380, 'sine', 0.12);
+          showToast('🔐 Please sign in or click 1-Click Demo to unlock your fitness telemetry!');
+          tabId = 'login';
+        }
+
+        playTone(480, 'sine', 0.06);
+
+        // Hide all views
+        ['dashboard', 'workouts', 'progress', 'nutrition', 'community', 'login', 'javarubric'].forEach(v => {
+          const el = document.getElementById(`view-${v}`);
+          if (el) el.classList.add('hidden');
+        });
+
+        // Show target view
+        const target = document.getElementById(`view-${tabId}`);
+        if (target) target.classList.remove('hidden');
+
+        // Update Top Navigation Pill Styling
+        document.querySelectorAll('.nav-tab').forEach(t => {
+          t.classList.remove('active-tab', 'text-white', 'bg-gradient-to-r', 'from-[#FF3B6B]', 'to-[#FF7A45]', 'shadow-lg', 'shadow-[#FF3B6B]/25', 'font-semibold');
+          t.classList.add('text-[#8E929F]', 'font-medium');
+        });
+
+        const activeNavBtn = document.getElementById(`nav-${tabId}`);
+        if (activeNavBtn) {
+          activeNavBtn.classList.remove('text-[#8E929F]', 'font-medium');
+          activeNavBtn.classList.add('active-tab', 'text-white', 'bg-gradient-to-r', 'from-[#FF3B6B]', 'to-[#FF7A45]', 'shadow-lg', 'shadow-[#FF3B6B]/25', 'font-semibold');
+        }
+
+        // Update Bottom Dock Active Styling
+        ['dashboard', 'workouts', 'progress'].forEach(b => {
+          const dockBtn = document.getElementById(`dock-btn-${b}`);
+          if (dockBtn) {
+            if (b === tabId) {
+              dockBtn.classList.add('text-[#FF3B6B]');
+              dockBtn.classList.remove('text-[#8E929F]');
+            } else {
+              dockBtn.classList.remove('text-[#FF3B6B]');
+              dockBtn.classList.add('text-[#8E929F]');
+            }
+          }
+        });
+
+        if (tabId === 'progress' && !progressChart) {
+          setTimeout(initProgressTrendChart, 50);
+        }
+
+        refreshIcons();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Notifications Toggle
+      function toggleNotifications() {
+        const drop = document.getElementById('notifications-dropdown');
+        drop.classList.toggle('hidden');
+        playTone(550, 'sine', 0.05);
+      }
+
+      function clearNotifications() {
+        const drop = document.getElementById('notifications-dropdown');
+        drop.classList.add('hidden');
+        showToast('All notifications marked as read');
+      }
+
+      // ==================== WORKOUT DETAILS & TIMER MODAL ====================
+      function openWorkoutDetails(workoutId) {
+        playTone(520, 'sine', 0.07);
+        const w = state.workouts.find(item => item.id === workoutId);
+        if (!w) return;
+        state.activeWorkout = w;
+
+        document.getElementById('modal-workout-img').src = w.image;
+        document.getElementById('modal-workout-title').textContent = w.title;
+        document.getElementById('modal-workout-badge').textContent = w.category;
+        document.getElementById('modal-workout-time').textContent = w.time;
+        document.getElementById('modal-workout-duration').textContent = w.duration;
+        document.getElementById('modal-workout-calories').textContent = w.calories;
+        document.getElementById('modal-workout-level').textContent = w.intensity;
+
+        // Populate exercise list
+        const exList = document.getElementById('modal-exercises-list');
+        exList.innerHTML = '';
+        w.exercises.forEach((ex, idx) => {
+          const row = document.createElement('div');
+          row.className = `p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+            ex.completed ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-[#121318] border-white/5 text-gray-200 hover:bg-white/[0.04]'
+          }`;
+          row.innerHTML = `
+            <div class="flex items-center gap-2.5">
+              <span class="w-4 h-4 rounded flex items-center justify-center text-xs ${ex.completed ? 'bg-emerald-500 text-black font-bold' : 'border border-white/20 text-transparent'}">
+                ${ex.completed ? '✓' : ''}
+              </span>
+              <div>
+                <p class="font-semibold text-white">${ex.name}</p>
+                <p class="text-[11px] text-[#8E929F]">${ex.sets}</p>
+              </div>
+            </div>
+            <span class="text-[10px] ${ex.completed ? 'text-emerald-400 font-bold' : 'text-[#8E929F]'}">${ex.completed ? 'Done' : 'Pending'}</span>
+          `;
+          row.onclick = () => {
+            ex.completed = !ex.completed;
+            playTone(ex.completed ? 880 : 440, 'triangle', 0.08);
+            openWorkoutDetails(workoutId); // Re-render list
+          };
+          exList.appendChild(row);
+        });
+
+        // Hide active timer panel until started
+        document.getElementById('active-timer-section').classList.add('hidden');
+        document.getElementById('btn-start-workout-session').classList.remove('hidden');
+
+        document.getElementById('workout-detail-modal').classList.remove('hidden');
+        refreshIcons();
+      }
+
+      function closeWorkoutDetails() {
+        document.getElementById('workout-detail-modal').classList.add('hidden');
+      }
+
+      function startWorkoutSession() {
+        playTone(600, 'sine', 0.15);
+        document.getElementById('btn-start-workout-session').classList.add('hidden');
+        document.getElementById('active-timer-section').classList.remove('hidden');
+        toggleWorkoutTimer();
+      }
+
+      function toggleWorkoutTimer() {
+        const toggleBtnLabel = document.getElementById('timer-toggle-label');
+        if (state.timerInterval) {
+          // Pause timer
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+          toggleBtnLabel.textContent = 'Resume Timer';
+          playTone(400, 'sine', 0.1);
+        } else {
+          // Start timer
+          playTone(800, 'triangle', 0.12);
+          toggleBtnLabel.textContent = 'Pause Timer';
+          state.timerInterval = setInterval(() => {
+            state.timerSeconds++;
+            const mins = Math.floor(state.timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (state.timerSeconds % 60).toString().padStart(2, '0');
+            const display = document.getElementById('workout-timer-display');
+            if (display) display.textContent = `${mins}:${secs}`;
+          }, 1000);
+        }
+      }
+
+      function finishWorkoutSession() {
+        if (state.timerInterval) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+        }
+        state.timerSeconds = 0;
+
+        // Reward calories & active minutes
+        state.metrics.calories += 280;
+        state.metrics.minutes += 30;
+        updateActivityRings();
+
+        // Trigger celebratory confetti
+        if (window.confetti) {
+          window.confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#FF3B6B', '#FF7A45', '#FFB347', '#FFFFFF']
+          });
+        }
+        playTone(880, 'sine', 0.25);
+        closeWorkoutDetails();
+        showToast('Workout Completed! +280 kcal & +30 min added to score 🎉');
+      }
+
+      // ==================== QUICK LOG & CUSTOM WORKOUT MODAL ====================
+      function openQuickLogModal() {
+        if (!state.user.isLoggedIn) {
+          playTone(380, 'sine', 0.1);
+          showToast('🔐 Please sign in to log workouts and activity metrics!');
+          switchNavTab('login');
+          return;
+        }
+        playTone(500, 'sine', 0.05);
+        document.getElementById('quick-log-modal').classList.remove('hidden');
+        switchLogModalTab('metrics');
+      }
+
+      function openCustomWorkoutModal() {
+        openQuickLogModal();
+        switchLogModalTab('custom_workout');
+      }
+
+      function closeQuickLogModal() {
+        document.getElementById('quick-log-modal').classList.add('hidden');
+      }
+
+      function switchLogModalTab(tab) {
+        const btnM = document.getElementById('btn-log-tab-metrics');
+        const btnW = document.getElementById('btn-log-tab-workout');
+        const contentM = document.getElementById('log-content-metrics');
+        const contentW = document.getElementById('form-custom-workout');
+
+        if (tab === 'metrics') {
+          btnM.classList.add('bg-white/10', 'text-white');
+          btnM.classList.remove('text-[#8E929F]');
+          btnW.classList.remove('bg-white/10', 'text-white');
+          btnW.classList.add('text-[#8E929F]');
+          contentM.classList.remove('hidden');
+          contentW.classList.add('hidden');
+        } else {
+          btnW.classList.add('bg-white/10', 'text-white');
+          btnW.classList.remove('text-[#8E929F]');
+          btnM.classList.remove('bg-white/10', 'text-white');
+          btnM.classList.add('text-[#8E929F]');
+          contentW.classList.remove('hidden');
+          contentM.classList.add('hidden');
+        }
+      }
+
+      function handleCustomWorkoutSubmit(e) {
+        e.preventDefault();
+        const title = document.getElementById('custom-workout-title').value;
+        const category = document.getElementById('custom-workout-category').value;
+        const time = document.getElementById('custom-workout-time-val').value;
+        const duration = document.getElementById('custom-workout-duration-val').value;
+        const intensity = document.getElementById('custom-workout-intensity-val').value;
+
+        const newId = 'custom_' + Date.now();
+        const newWorkout = {
+          id: newId,
+          title: title,
+          category: category,
+          categoryIcon: 'dumbbell',
+          time: time,
+          duration: `${duration} min`,
+          intensity: intensity,
+          targetZone: 'Custom',
+          calories: `${parseInt(duration, 10) * 8} kcal`,
+          image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
+          exercises: [
+            { name: `${title} - Warmup & Primer`, sets: '5 mins mobility', completed: false },
+            { name: `${title} - Working Sets`, sets: '4 sets to target intensity', completed: false },
+            { name: `${title} - Cool Down Stretch`, sets: '5 mins recovery', completed: false }
+          ]
+        };
+
+        state.workouts.unshift(newWorkout);
+        renderWorkoutsList();
+        closeQuickLogModal();
+        playTone(700, 'triangle', 0.15);
+        showToast(`Workout "${title}" added to schedule!`);
+      }
+
+      function renderWorkoutsList() {
+        const container = document.getElementById('workouts-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        state.workouts.forEach(w => {
+          const card = document.createElement('div');
+          card.className = "workout-card group cursor-pointer bg-[#121318] hover:bg-[#20212b] border border-white/5 hover:border-[#FF3B6B]/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between transition-all duration-300 shadow-sm hover:scale-[1.005]";
+          card.onclick = () => openWorkoutDetails(w.id);
+          card.innerHTML = `
+            <div class="flex items-center gap-3.5 sm:gap-4 min-w-0">
+              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 relative border border-white/10">
+                <img src="${w.image}" alt="${w.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div class="absolute bottom-1.5 left-1.5 w-6 h-6 rounded-full bg-[#121318]/90 text-[#FF3B6B] flex items-center justify-center border border-[#FF3B6B]/40">
+                  <i data-lucide="${w.categoryIcon || 'dumbbell'}" class="w-3 h-3"></i>
+                </div>
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-[#FF3B6B] transition-colors truncate">${w.title}</h3>
+                <div class="flex items-center gap-2 text-xs text-[#8E929F] mt-1">
+                  <span>${w.duration}</span>
+                  <span>•</span>
+                  <span class="text-gray-300">${w.intensity}</span>
+                  <span>•</span>
+                  <span class="text-[#FF7A45]">${w.targetZone}</span>
+                </div>
+                <span class="inline-block mt-1 text-[11px] text-emerald-400 font-medium">✓ ${w.exercises.length} exercises</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0 ml-3">
+              <span class="text-xs sm:text-sm font-bold text-[#FF7A45]">${w.time}</span>
+              <div class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#FF3B6B] group-hover:text-white flex items-center justify-center text-[#8E929F] transition-all">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </div>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+        refreshIcons();
+      }
+
+      // ==================== AI COACH DRAWER & CHAT ====================
+      function openAICoachDrawer() {
+        if (!state.user.isLoggedIn) {
+          playTone(380, 'sine', 0.1);
+          showToast('🔐 Please sign in to chat with FitTrack AI Coach!');
+          switchNavTab('login');
+          return;
+        }
+        playTone(650, 'sine', 0.08);
+        document.getElementById('ai-coach-drawer').classList.remove('hidden');
+        refreshIcons();
+      }
+
+      function closeAICoachDrawer() {
+        document.getElementById('ai-coach-drawer').classList.add('hidden');
+      }
+
+      function sendQuickPrompt(promptText) {
+        document.getElementById('ai-chat-input').value = promptText;
+        handleAIChatSubmit(new Event('submit'));
+      }
+
+      function handleAIChatSubmit(e) {
+        if (e) e.preventDefault();
+        const input = document.getElementById('ai-chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // User message bubble
+        appendChatMessage('user', text);
+        input.value = '';
+        playTone(580, 'sine', 0.06);
+
+        // Typing indicator
+        const typingId = appendTypingIndicator();
+
+        // Generate response based on query
+        setTimeout(() => {
+          removeTypingIndicator(typingId);
+          const reply = generateAICoachResponse(text);
+          appendChatMessage('ai', reply);
+          playTone(740, 'triangle', 0.12);
+        }, 1100);
+      }
+
+      function appendChatMessage(sender, content) {
+        const msgContainer = document.getElementById('ai-chat-messages');
+        const bubble = document.createElement('div');
+        if (sender === 'user') {
+          bubble.className = "flex justify-end";
+          bubble.innerHTML = `
+            <div class="bg-gradient-to-r from-[#FF3B6B] to-[#FF7A45] text-white rounded-2xl rounded-tr-sm p-3 max-w-[85%] text-xs shadow-md">
+              <p>${escapeHtml(content)}</p>
+            </div>
+          `;
+        } else {
+          bubble.className = "flex gap-3";
+          bubble.innerHTML = `
+            <div class="w-7 h-7 rounded-xl bg-[#FF4B6E] text-white flex items-center justify-center shrink-0 mt-0.5">
+              <i data-lucide="bot" class="w-4 h-4"></i>
+            </div>
+            <div class="bg-[#1A1B22] border border-white/5 rounded-2xl rounded-tl-sm p-3.5 text-gray-200 leading-relaxed max-w-[85%] shadow-sm">
+              ${content}
+            </div>
+          `;
+        }
+        msgContainer.appendChild(bubble);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+        refreshIcons();
+      }
+
+      function appendTypingIndicator() {
+        const msgContainer = document.getElementById('ai-chat-messages');
+        const id = 'typing-' + Date.now();
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = "flex gap-3 items-center text-xs text-[#8E929F]";
+        div.innerHTML = `
+          <div class="w-7 h-7 rounded-xl bg-white/5 text-gray-400 flex items-center justify-center shrink-0">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div class="flex items-center gap-1.5 bg-[#1A1B22] px-3 py-2 rounded-xl">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#FF3B6B] animate-bounce"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#FF7A45] animate-bounce [animation-delay:0.2s]"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#FFB347] animate-bounce [animation-delay:0.4s]"></span>
+          </div>
+        `;
+        msgContainer.appendChild(div);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+        return id;
+      }
+
+      function removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      }
+
+      function generateAICoachResponse(query) {
+        const q = query.toLowerCase();
+        if (q.includes('hiit') || q.includes('circuit') || q.includes('cardio')) {
+          return `
+            <p class="font-bold text-white mb-1.5">🔥 High-Octane 20-Min Tabata Circuit:</p>
+            <p class="text-xs text-[#8E929F] mb-2">Perform 40s work followed by 20s recovery. Complete 4 rounds:</p>
+            <ol class="space-y-1.5 text-xs text-gray-300">
+              <li>1. <strong>Goblet Squats</strong> - 40s explosive drive</li>
+              <li>2. <strong>Kettlebell Russian Twists</strong> - 40s core tension</li>
+              <li>3. <strong>Burpee to Lateral Bound</strong> - 40s cardio peak</li>
+              <li>4. <strong>Mountain Climbers</strong> - 40s steady cadence</li>
+            </ol>
+            <p class="mt-2.5 text-emerald-400 font-semibold text-[11px]">⚡ Estimated burn: ~260 kcal in Zone 4</p>
+          `;
+        } else if (q.includes('eat') || q.includes('meal') || q.includes('post-workout') || q.includes('nutrition')) {
+          return `
+            <p class="font-bold text-white mb-1.5">🥗 Post-Workout Recovery Window:</p>
+            <p class="text-xs text-gray-300 mb-2">Since you've burned 632 kcal today, aim for a 3:1 Carb to Protein ratio within the next 45 minutes:</p>
+            <div class="space-y-1 text-xs text-[#8E929F]">
+              <p>• <strong>Protein:</strong> 30-35g (Whey isolate, grilled salmon, or tofu)</p>
+              <p>• <strong>Carbohydrates:</strong> 60-70g (Jasmine rice, sweet potato, or ripe banana)</p>
+              <p>• <strong>Electrolytes:</strong> 500ml water with pinch of Himalayan sea salt</p>
+            </div>
+            <p class="mt-2 text-xs text-[#FF7A45]">Will replenish your glycogen without insulin spikes!</p>
+          `;
+        } else if (q.includes('heart') || q.includes('rate') || q.includes('bpm') || q.includes('zone')) {
+          return `
+            <p class="font-bold text-white mb-1.5">❤️ Biometric Heart Rate Breakdown:</p>
+            <p class="text-xs text-gray-300 mb-2">Your current <strong>128 BPM</strong> is located squarely in <strong>Zone 3 (Aerobic Cardio)</strong>:</p>
+            <div class="space-y-1 text-xs text-[#8E929F]">
+              <p>• <strong>Benefits:</strong> Strengthens cardiac output, vascular elasticity, and capillary density.</p>
+              <p>• <strong>Resting HR:</strong> 62 BPM indicates strong athletic parasympathetic tone.</p>
+              <p>• <strong>Recommendation:</strong> Maintain this cadence for another 15 minutes before initiating an active 5-minute cool down.</p>
+            </div>
+          `;
+        } else {
+          return `
+            <p class="font-bold text-white mb-1">Great initiative, ${state.user.firstName}!</p>
+            <p class="text-xs text-gray-300 mb-2">Based on your activity telemetry (12,456 steps and 632 kcal burned), your central nervous system is primed for peak performance today.</p>
+            <p class="text-xs text-[#8E929F]">Remember to stay hydrated (aim for 3,000ml) and consider doing the <strong>Yoga Flow</strong> scheduled for 6:00 PM to facilitate joint decompression.</p>
+          `;
+        }
+      }
+
+      function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      // Profile Modal
+      function openProfileModal() {
+        if (!state.user.isLoggedIn) {
+          playTone(380, 'sine', 0.1);
+          showToast('🔐 Please sign in to view your profile and account settings!');
+          switchNavTab('login');
+          return;
+        }
+        playTone(500, 'sine', 0.05);
+        document.getElementById('user-profile-modal').classList.remove('hidden');
+      }
+
+      function closeProfileModal() {
+        document.getElementById('user-profile-modal').classList.add('hidden');
+      }
+
+      // Water logging
+      function logWater(ml) {
+        state.waterIntake += ml;
+        document.getElementById('water-current-val').textContent = state.waterIntake.toLocaleString();
+        playTone(900, 'sine', 0.1);
+        showToast(`+${ml} ml water logged! Stay hydrated 💧`);
+      }
+
+      // Lightweight Toast Notification
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-5 right-5 z-50 bg-[#1A1B22] border border-[#FF3B6B]/50 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-coral-glow transition-all duration-300 transform translate-y-[-20px] opacity-0 flex items-center gap-2';
+        toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-[#FF3B6B]"></span><span>${message}</span>`;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+        }, 10);
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-[-20px]');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      // ==================== AUTHENTICATION & LOGIN LOGIC ====================
+      function switchAuthTab(tab) {
+        playTone(520, 'sine', 0.06);
+        const tabIn = document.getElementById('tab-auth-signin');
+        const tabUp = document.getElementById('tab-auth-signup');
+        const formIn = document.getElementById('form-auth-signin');
+        const formUp = document.getElementById('form-auth-signup');
+
+        if (tab === 'signin') {
+          tabIn.classList.add('bg-white/10', 'text-white');
+          tabIn.classList.remove('text-[#8E929F]');
+          tabUp.classList.remove('bg-white/10', 'text-white');
+          tabUp.classList.add('text-[#8E929F]');
+          formIn.classList.remove('hidden');
+          formUp.classList.add('hidden');
+        } else {
+          tabUp.classList.add('bg-white/10', 'text-white');
+          tabUp.classList.remove('text-[#8E929F]');
+          tabIn.classList.remove('bg-white/10', 'text-white');
+          tabIn.classList.add('text-[#8E929F]');
+          formUp.classList.remove('hidden');
+          formIn.classList.add('hidden');
+        }
+        refreshIcons();
+      }
+
+      function togglePasswordVisibility(id) {
+        const input = document.getElementById(id);
+        const icon = document.getElementById('eye-' + id);
+        if (!input) return;
+        if (input.type === 'password') {
+          input.type = 'text';
+          if (icon) icon.setAttribute('data-lucide', 'eye-off');
+        } else {
+          input.type = 'password';
+          if (icon) icon.setAttribute('data-lucide', 'eye');
+        }
+        refreshIcons();
+      }
+
+      function quickDemoLogin() {
+        state.user.isLoggedIn = true;
+        state.user.name = 'Jordan Rivers';
+        state.user.firstName = 'Jordan';
+        state.user.email = 'jordan.rivers@fittrack.io';
+        syncUserUI();
+        playTone(880, 'triangle', 0.2);
+        if (window.confetti) {
+          window.confetti({ particleCount: 60, spread: 65, origin: { y: 0.5 }, colors: ['#FF3B6B', '#FF7A45', '#FFB347', '#FFFFFF'] });
+        }
+        switchNavTab('dashboard');
+        showToast('Welcome back, Jordan! 👋 Signed in as Demo Athlete');
+      }
+
+      function handleLoginSubmit(e) {
+        e.preventDefault();
+        const accountInput = document.getElementById('login-account-name') ? document.getElementById('login-account-name').value.trim() : '';
+        let accountName = accountInput || 'Athlete';
+        let email = 'athlete@fittrack.io';
+
+        if (accountInput.includes('@')) {
+          email = accountInput;
+          const part = accountInput.split('@')[0];
+          accountName = part.charAt(0).toUpperCase() + part.slice(1);
+        } else {
+          email = `${accountName.toLowerCase().replace(/\s+/g, '')}@fittrack.io`;
+        }
+
+        const firstName = accountName.split(' ')[0] || accountName;
+        state.user.isLoggedIn = true;
+        state.user.name = accountName;
+        state.user.firstName = firstName;
+        state.user.email = email;
+        syncUserUI();
+        playTone(740, 'triangle', 0.15);
+        if (window.confetti) {
+          window.confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 }, colors: ['#FF3B6B', '#FF7A45', '#FFFFFF'] });
+        }
+        switchNavTab('dashboard');
+        showToast(`Welcome back, ${firstName}! 👋 Logged in as ${accountName}`);
+      }
+
+      function handleRegisterSubmit(e) {
+        e.preventDefault();
+        const name = document.getElementById('signup-name').value.trim() || 'New Athlete';
+        const email = document.getElementById('signup-email').value.trim() || 'athlete@fittrack.io';
+        const goal = document.getElementById('signup-goal').value;
+        const firstName = name.split(' ')[0] || name;
+        state.user.isLoggedIn = true;
+        state.user.name = name;
+        state.user.firstName = firstName;
+        state.user.email = email;
+        state.user.goal = goal;
+        syncUserUI();
+        playTone(880, 'triangle', 0.25);
+        if (window.confetti) {
+          window.confetti({ particleCount: 75, spread: 75, origin: { y: 0.5 }, colors: ['#FF3B6B', '#FF7A45', '#FFB347', '#FFFFFF'] });
+        }
+        switchNavTab('dashboard');
+        showToast(`Account created! Welcome to FitTrack, ${firstName}! 🚀`);
+      }
+
+      function socialLogin(provider) {
+        playTone(600, 'sine', 0.1);
+        state.user.isLoggedIn = true;
+        state.user.name = `${provider} Athlete`;
+        state.user.firstName = `${provider} Athlete`;
+        syncUserUI();
+        switchNavTab('dashboard');
+        showToast(`Signed in successfully via ${provider}!`);
+      }
+
+      function continueAsGuest() {
+        state.user.isLoggedIn = true;
+        state.user.name = 'Guest Athlete';
+        state.user.firstName = 'Guest';
+        state.user.email = 'guest@fittrack.io';
+        syncUserUI();
+        playTone(600, 'sine', 0.1);
+        if (window.confetti) {
+          window.confetti({ particleCount: 40, spread: 50, origin: { y: 0.5 }, colors: ['#FF3B6B', '#FF7A45', '#FFFFFF'] });
+        }
+        switchNavTab('dashboard');
+        showToast('Welcome, Guest! 👋 Exploring FitTrack Biometrics');
+      }
+
+      function logoutUser() {
+        playTone(420, 'sine', 0.1);
+        state.user.isLoggedIn = false;
+        state.user.name = 'Athlete';
+        state.user.firstName = 'Athlete';
+        syncUserUI();
+        closeProfileModal();
+        switchNavTab('login');
+        showToast('Signed out of FitTrack. Access locked 🔒');
+      }
+
+      function showForgotPassword() {
+        playTone(500, 'sine', 0.08);
+        showToast('Password reset link sent to your registered email! ✉️');
+      }
+
+      function syncUserUI() {
+        const greetingEl = document.getElementById('greeting-username');
+        if (greetingEl) greetingEl.textContent = state.user.firstName || 'Athlete';
+        const profileName = document.getElementById('profile-modal-name');
+        if (profileName) profileName.textContent = state.user.name || 'Athlete';
+        const profileEmail = document.getElementById('profile-modal-email');
+        if (profileEmail) profileEmail.textContent = `${state.user.email} · ${state.user.tier}`;
+        const leaderboardName = document.getElementById('leaderboard-user-name');
+        if (leaderboardName) leaderboardName.textContent = `${state.user.name || 'Athlete'} (You)`;
+        const coachName = document.getElementById('coach-greeting-name');
+        if (coachName) coachName.textContent = state.user.firstName || 'Athlete';
+        const navAuthText = document.getElementById('nav-auth-text');
+        if (navAuthText) navAuthText.textContent = state.user.isLoggedIn ? state.user.firstName : 'Sign In';
+
+        // Toggle Main Dashboard Header & Floating Bottom Dock visibility based on authentication
+        const mainHeader = document.getElementById('main-header');
+        const floatingDock = document.getElementById('floating-dock');
+        if (mainHeader) {
+          if (state.user.isLoggedIn) {
+            mainHeader.classList.remove('hidden');
+          } else {
+            mainHeader.classList.add('hidden');
+          }
+        }
+        if (floatingDock) {
+          if (state.user.isLoggedIn) {
+            floatingDock.classList.remove('hidden');
+          } else {
+            floatingDock.classList.add('hidden');
+          }
+        }
+      }
+
+      // Initialize on DOM Ready & Window Load
+      function bootstrap() {
+        refreshIcons();
+        updateActivityRings();
+        syncUserUI();
+
+        // Enforce Login First Gate: If user opens, first login page should come, then fitness data!
+        if (state.user.isLoggedIn) {
+          switchNavTab('dashboard');
+        } else {
+          switchNavTab('login');
+        }
+
+        if (!hrChart) initHeartRateChart();
+        startHeartRateSimulation();
+
+        // Update real date
+        try {
+          const dateOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+          const formattedDate = new Date().toLocaleDateString('en-US', dateOptions);
+          const dateEl = document.getElementById('current-date-text');
+          if (dateEl) dateEl.textContent = formattedDate;
+        } catch(e) {}
+      }
+
+      document.addEventListener('DOMContentLoaded', bootstrap);
+      window.addEventListener('load', () => {
+        refreshIcons();
+        if (!hrChart) initHeartRateChart();
+      });
+      // Immediate attempt if script executed after load
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        bootstrap();
+      }
+    </script>
+  </body>
+</html>

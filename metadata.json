@@ -1,0 +1,8 @@
+{
+  "name": "FIT TRACK - Online Fitness Tracking System",
+  "description": "High-performance interactive fitness tracking dashboard featuring daily activity gauges, live heart rate monitor, workout schedules, and AI Coach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
